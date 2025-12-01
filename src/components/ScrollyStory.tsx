@@ -72,7 +72,7 @@ const steps: StepData[] = [
   {
     id: 'stunting',
     title: 'The controlled estimate',
-    text: 'Dell\'s paper uses polynomial RD with controls for elevation, slope, and other geographic factors. The refined estimate: 6 percentage points higher stunting in mita districts. Colonial exploitation continues to harm children generations later.',
+    text: 'Dell\'s paper uses polynomial RD with controls for elevation, slope, and other geographic factors. The refined estimate: 6 percentage points higher stunting in mita districts—about 15% above the baseline rate. Colonial exploitation continues to harm children generations later.',
     visual: 'rdd-stunting',
     rddPhase: 'effect',
   },
