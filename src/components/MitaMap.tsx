@@ -148,15 +148,15 @@ const MitaMap: React.FC<MitaMapProps> = ({ showDistricts = true }) => {
                 }}
               />
             ))}
-            {/* Mita region */}
+            {/* Mita region - dark slate to match intro */}
             {allMitaPolygons.map((polygon, index) => (
               <Polygon
                 key={`mita-${index}`}
                 positions={polygon}
                 pathOptions={{
-                  color: colors.mitaDark,
-                  fillColor: colors.mita,
-                  fillOpacity: 0.6,
+                  color: '#1A202C',
+                  fillColor: '#222939',  // Match intro background
+                  fillOpacity: 0.85,
                   weight: 0,
                 }}
               />
@@ -174,9 +174,9 @@ const MitaMap: React.FC<MitaMapProps> = ({ showDistricts = true }) => {
               key={index}
               positions={d.polygon}
               pathOptions={{
-                color: isMita ? colors.mitaDark : colors.nonmita,
-                fillColor: isMita ? colors.mita : colors.nonmitaLight,
-                fillOpacity: 0.5,
+                color: isMita ? '#1A202C' : colors.nonmita,
+                fillColor: isMita ? '#222939' : colors.nonmitaLight,
+                fillOpacity: isMita ? 0.85 : 0.5,
                 weight: 1,
               }}
             >

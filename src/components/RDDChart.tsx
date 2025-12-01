@@ -61,12 +61,12 @@ const processData = (outcome: 'consumption' | 'stunting' | 'roads') => {
     });
 };
 
-// Dell (2010) regression discontinuity estimates (Table 2)
+// Dell (2010) regression discontinuity estimates (Tables II and VIII)
 // These are the proper econometric estimates with controls
 const PAPER_COEFFICIENTS = {
   consumption: -0.25,  // log points (≈ -22% consumption)
   stunting: 0.06,      // 6 percentage points higher stunting
-  roads: -0.31,        // km road density
+  roads: -36,          // meters/km² road density (Table VIII, Panel C, column 2)
 };
 
 // Calculate fitted lines - both linear OLS and polynomial versions
@@ -184,7 +184,7 @@ const calculateFittedLines = (outcome: 'consumption' | 'stunting' | 'roads') => 
 const outcomeLabels = {
   consumption: 'Log household consumption (2001)',
   stunting: 'Child stunting rate (2005)',
-  roads: 'Road density in km (2006)',
+  roads: 'Road density (meters/km², 2006)',
 };
 
 const RDDChart: React.FC<RDDChartProps> = ({ outcome, phase = 'effect' }) => {
@@ -237,7 +237,7 @@ const RDDChart: React.FC<RDDChartProps> = ({ outcome, phase = 'effect' }) => {
       const ppChange = discontinuity;
       return `${ppChange > 0 ? '+' : ''}${ppChange.toFixed(1)}pp stunting in mita districts`;
     } else {
-      return `${discontinuity.toFixed(1)} km road density in mita districts`;
+      return `${discontinuity.toFixed(0)} meters/km² road density in mita districts`;
     }
   };
 
@@ -257,15 +257,15 @@ const RDDChart: React.FC<RDDChartProps> = ({ outcome, phase = 'effect' }) => {
         .attr('class', 'chart-content')
         .attr('transform', `translate(${margin.left},${margin.top})`);
 
-      // Background regions - mita on RIGHT, non-mita on LEFT
+      // Background regions - mita on RIGHT (dark), non-mita on LEFT (light)
       g.append('rect')
         .attr('class', 'nonmita-region')
         .attr('x', xScale(-50))
         .attr('width', xScale(0) - xScale(-50))
         .attr('y', 0)
         .attr('height', innerHeight)
-        .attr('fill', colors.nonmita)
-        .attr('opacity', 0.08);
+        .attr('fill', colors.nonmitaLight)
+        .attr('opacity', 0.3);
 
       g.append('rect')
         .attr('class', 'mita-region')
@@ -273,11 +273,12 @@ const RDDChart: React.FC<RDDChartProps> = ({ outcome, phase = 'effect' }) => {
         .attr('width', xScale(50) - xScale(0))
         .attr('y', 0)
         .attr('height', innerHeight)
-        .attr('fill', colors.mita)
-        .attr('opacity', 0.08);
+        .attr('fill', '#222939')  // Match intro background (--gray-dark)
+        .attr('opacity', 1);
 
       // Region labels
       g.append('text')
+        .attr('class', 'nonmita-label')
         .attr('x', xScale(-25))
         .attr('y', 20)
         .attr('text-anchor', 'middle')
@@ -287,27 +288,14 @@ const RDDChart: React.FC<RDDChartProps> = ({ outcome, phase = 'effect' }) => {
         .text('Non-mita');
 
       g.append('text')
+        .attr('class', 'mita-label')
         .attr('x', xScale(25))
         .attr('y', 20)
         .attr('text-anchor', 'middle')
-        .attr('fill', colors.mitaDark)
+        .attr('fill', '#E2E8F0')  // Light gray text on dark background
         .attr('font-size', '13px')
         .attr('font-weight', '600')
         .text('Mita');
-
-      // Grid lines
-      g.append('g')
-        .attr('class', 'grid-x')
-        .attr('transform', `translate(0,${innerHeight})`)
-        .call(d3.axisBottom(xScale).tickSize(-innerHeight).tickFormat(() => ''))
-        .call(g => g.select('.domain').remove())
-        .call(g => g.selectAll('.tick line').attr('stroke', colors.gridLine).attr('stroke-dasharray', '3,3'));
-
-      g.append('g')
-        .attr('class', 'grid-y')
-        .call(d3.axisLeft(yScale).tickSize(-innerWidth).tickFormat(() => ''))
-        .call(g => g.select('.domain').remove())
-        .call(g => g.selectAll('.tick line').attr('stroke', colors.gridLine).attr('stroke-dasharray', '3,3'));
 
       // Axes
       g.append('g')
@@ -327,25 +315,27 @@ const RDDChart: React.FC<RDDChartProps> = ({ outcome, phase = 'effect' }) => {
         .attr('font-size', '12px')
         .text('Distance from mita boundary (km)');
 
-      // Boundary line
-      g.append('line')
-        .attr('class', 'boundary-line')
-        .attr('x1', xScale(0))
-        .attr('x2', xScale(0))
-        .attr('y1', 0)
-        .attr('y2', innerHeight)
-        .attr('stroke', colors.nonmita)
-        .attr('stroke-width', 2)
-        .attr('stroke-dasharray', '5,5');
-
-      // Fitted lines groups (will be shown/hidden based on phase)
+      // Fitted lines groups
       g.append('path').attr('class', 'fitted-line-inside');
       g.append('path').attr('class', 'fitted-line-outside');
 
       // Dots group
       g.append('g').attr('class', 'dots');
+    }
 
-      // Treatment effect elements will be added dynamically when needed
+    // CRITICAL: Always reset elements to hidden state FIRST, then animate in if needed
+    // This prevents flash when transitioning between outcomes or phases
+    const insideLineEl = g.select('.fitted-line-inside');
+    const outsideLineEl = g.select('.fitted-line-outside');
+
+    // Immediately hide lines if we're in dots phase (no transition, instant)
+    if (phase === 'dots') {
+      insideLineEl.interrupt().attr('opacity', 0).attr('d', null);
+      outsideLineEl.interrupt().attr('opacity', 0).attr('d', null);
+      // Remove any treatment effect elements immediately
+      g.selectAll('.treatment-brace, .treatment-label-bg, .treatment-label')
+        .interrupt()
+        .remove();
     }
 
     // Update Y scale and axis
@@ -364,48 +354,69 @@ const RDDChart: React.FC<RDDChartProps> = ({ outcome, phase = 'effect' }) => {
     g.select<SVGGElement>('.x-axis')
       .call(d3.axisBottom(xScale).ticks(5).tickFormat(d => String(Math.abs(d as number))));
 
-    // Update grid (no transition to avoid flashing domain line)
-    g.select<SVGGElement>('.grid-y')
-      .call(d3.axisLeft(yScale).tickSize(-innerWidth).tickFormat(() => ''))
-      .call(g => g.select('.domain').remove())
-      .call(g => g.selectAll('.tick line').attr('stroke', colors.gridLine).attr('stroke-dasharray', '3,3'));
-
     // Update fitted lines - only show in 'ols', 'naive-effect', and 'effect' phases
     const lineGenerator = d3.line<{ distance: number; fitted: number }>()
       .x(d => xScale(d.distance))
       .y(d => yScale(d.fitted));
 
     const showOLS = phase === 'ols' || phase === 'naive-effect' || phase === 'effect';
-
-    const insideLineEl = g.select('.fitted-line-inside').datum(insideLine);
-    const outsideLineEl = g.select('.fitted-line-outside').datum(outsideLine);
-
-    if (showOLS) {
-      insideLineEl
-        .attr('d', lineGenerator)
-        .attr('fill', 'none')
-        .attr('stroke', colors.mitaDark)
-        .attr('stroke-width', 3)
-        .attr('opacity', 1);
-      outsideLineEl
-        .attr('d', lineGenerator)
-        .attr('fill', 'none')
-        .attr('stroke', colors.nonmita)
-        .attr('stroke-width', 3)
-        .attr('opacity', 1);
-    } else {
-      // Remove path data entirely for 'dots' phase
-      insideLineEl.attr('d', null).attr('opacity', 0);
-      outsideLineEl.attr('d', null).attr('opacity', 0);
-    }
-
-    // Show treatment effect highlight only in 'naive-effect' or 'effect' phase
     const showEffect = phase === 'naive-effect' || phase === 'effect';
 
-    // Remove treatment effect elements if not needed
-    if (!showEffect) {
-      g.selectAll('.treatment-brace, .treatment-label-bg, .treatment-label').remove();
-    } else {
+    // For dots phase, we already hid everything above - just skip the rest
+    if (phase !== 'dots' && showOLS) {
+      // Check if currently hidden
+      const insideCurrentOpacity = parseFloat(insideLineEl.attr('opacity') || '0');
+      const outsideCurrentOpacity = parseFloat(outsideLineEl.attr('opacity') || '0');
+
+      // Common line styling
+      insideLineEl
+        .attr('fill', 'none')
+        .attr('stroke', '#E2E8F0')
+        .attr('stroke-width', 3);
+
+      outsideLineEl
+        .attr('fill', 'none')
+        .attr('stroke', colors.nonmita)
+        .attr('stroke-width', 3);
+
+      // If lines are already visible (transitioning between naive-effect and effect),
+      // animate the path change smoothly
+      if (insideCurrentOpacity > 0.5) {
+        // Smooth transition of path shape
+        insideLineEl
+          .datum(insideLine)
+          .transition()
+          .duration(600)
+          .ease(d3.easeCubicInOut)
+          .attr('d', lineGenerator);
+
+        outsideLineEl
+          .datum(outsideLine)
+          .transition()
+          .duration(600)
+          .ease(d3.easeCubicInOut)
+          .attr('d', lineGenerator);
+      } else {
+        // Lines are hidden - set path immediately, then fade in
+        insideLineEl
+          .datum(insideLine)
+          .attr('d', lineGenerator)
+          .transition()
+          .duration(400)
+          .attr('opacity', 1);
+
+        outsideLineEl
+          .datum(outsideLine)
+          .attr('d', lineGenerator)
+          .transition()
+          .duration(400)
+          .attr('opacity', 1);
+      }
+    }
+
+    // Treatment effect - only in 'naive-effect' or 'effect' phase
+    // For other phases, we already removed these elements above
+    if (showEffect) {
       // Get the y positions at x=0 for both lines (the intercepts)
       const insideY0 = insideLine.find(d => d.distance === 0)?.fitted ?? insideLine[0]?.fitted;
       const outsideY0 = outsideLine.find(d => d.distance === 0)?.fitted ?? outsideLine[outsideLine.length - 1]?.fitted;
@@ -423,7 +434,7 @@ const RDDChart: React.FC<RDDChartProps> = ({ outcome, phase = 'effect' }) => {
           } else if (outcome === 'stunting') {
             return `${discontinuity > 0 ? '+' : ''}${discontinuity.toFixed(1)}pp`;
           } else {
-            return `${discontinuity > 0 ? '+' : ''}${discontinuity.toFixed(1)} km`;
+            return `${discontinuity > 0 ? '+' : ''}${discontinuity.toFixed(0)} m/km²`;
           }
         };
 
@@ -434,45 +445,108 @@ const RDDChart: React.FC<RDDChartProps> = ({ outcome, phase = 'effect' }) => {
         const labelX = xPos + 20;
         const labelY = (y1 + y2) / 2;
 
-        // Create elements if they don't exist
+        // Create elements if they don't exist (with initial opacity 0 for fade-in)
+        let braceIsNew = false;
+        let labelIsNew = false;
+
         if (g.select('.treatment-brace').empty()) {
-          g.append('path').attr('class', 'treatment-brace');
+          g.append('path').attr('class', 'treatment-brace').attr('opacity', 0);
+          braceIsNew = true;
         }
         if (g.select('.treatment-label-bg').empty()) {
-          g.append('rect').attr('class', 'treatment-label-bg');
+          g.append('rect').attr('class', 'treatment-label-bg').attr('opacity', 0);
+          labelIsNew = true;
         }
         if (g.select('.treatment-label').empty()) {
-          g.append('text').attr('class', 'treatment-label');
+          g.append('text').attr('class', 'treatment-label').attr('opacity', 0);
         }
 
-        // Highlight the gap on the boundary line
-        g.select('.treatment-brace')
-          .attr('d', `M ${xPos} ${y1} L ${xPos} ${y2}`)
-          .attr('fill', 'none')
-          .attr('stroke', colors.mitaDark)
-          .attr('stroke-width', 4);
+        const braceEl = g.select('.treatment-brace');
+        const labelBgEl = g.select('.treatment-label-bg');
+        const labelEl = g.select('.treatment-label');
 
-        // Background box for label
-        g.select('.treatment-label-bg')
-          .attr('x', labelX - labelPadding.x)
-          .attr('y', labelY - labelHeight / 2)
-          .attr('width', labelWidth)
-          .attr('height', labelHeight)
-          .attr('rx', 4)
-          .attr('fill', 'white')
-          .attr('stroke', colors.mitaDark)
-          .attr('stroke-width', 2)
-          .style('filter', 'drop-shadow(0 2px 4px rgba(0,0,0,0.15))');
+        // Check if elements are already visible (transitioning between naive-effect and effect)
+        const braceCurrentOpacity = parseFloat(braceEl.attr('opacity') || '0');
+        const shouldAnimate = braceCurrentOpacity > 0.5 && !braceIsNew;
 
-        // Label text
-        g.select('.treatment-label')
-          .attr('x', labelX)
-          .attr('y', labelY)
-          .attr('dy', '0.35em')
-          .attr('font-size', '14px')
-          .attr('font-weight', '700')
-          .attr('fill', colors.mitaDark)
-          .text(labelText);
+        if (shouldAnimate) {
+          // Smooth transition of positions - animate the brace line and label
+          braceEl
+            .attr('fill', 'none')
+            .attr('stroke', '#F7FAFC')
+            .attr('stroke-width', 4)
+            .transition()
+            .duration(600)
+            .ease(d3.easeCubicInOut)
+            .attr('d', `M ${xPos} ${y1} L ${xPos} ${y2}`);
+
+          labelBgEl
+            .attr('rx', 4)
+            .attr('fill', colors.mitaDarker)
+            .attr('stroke', '#E2E8F0')
+            .attr('stroke-width', 2)
+            .style('filter', 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))')
+            .transition()
+            .duration(600)
+            .ease(d3.easeCubicInOut)
+            .attr('x', labelX - labelPadding.x)
+            .attr('y', labelY - labelHeight / 2)
+            .attr('width', labelWidth)
+            .attr('height', labelHeight);
+
+          labelEl
+            .attr('dy', '0.35em')
+            .attr('font-size', '14px')
+            .attr('font-weight', '700')
+            .attr('fill', '#F7FAFC')
+            .text(labelText)
+            .transition()
+            .duration(600)
+            .ease(d3.easeCubicInOut)
+            .attr('x', labelX)
+            .attr('y', labelY);
+        } else {
+          // First appearance - set positions immediately, then fade in
+          braceEl
+            .attr('d', `M ${xPos} ${y1} L ${xPos} ${y2}`)
+            .attr('fill', 'none')
+            .attr('stroke', '#F7FAFC')
+            .attr('stroke-width', 4);
+
+          labelBgEl
+            .attr('x', labelX - labelPadding.x)
+            .attr('y', labelY - labelHeight / 2)
+            .attr('width', labelWidth)
+            .attr('height', labelHeight)
+            .attr('rx', 4)
+            .attr('fill', colors.mitaDarker)
+            .attr('stroke', '#E2E8F0')
+            .attr('stroke-width', 2)
+            .style('filter', 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))');
+
+          labelEl
+            .attr('x', labelX)
+            .attr('y', labelY)
+            .attr('dy', '0.35em')
+            .attr('font-size', '14px')
+            .attr('font-weight', '700')
+            .attr('fill', '#F7FAFC')
+            .text(labelText);
+
+          // Fade in new elements
+          if (braceIsNew) {
+            braceEl.transition().duration(400).delay(200).attr('opacity', 1);
+          } else {
+            braceEl.attr('opacity', 1);
+          }
+          if (labelIsNew) {
+            labelBgEl.transition().duration(400).delay(300).attr('opacity', 1);
+            labelEl.transition().duration(400).delay(300).attr('opacity', 1);
+          } else {
+            labelBgEl.attr('opacity', 1);
+            labelEl.attr('opacity', 1);
+          }
+        }
       }
     }
 
@@ -484,12 +558,13 @@ const RDDChart: React.FC<RDDChartProps> = ({ outcome, phase = 'effect' }) => {
       .data(data, d => String(d.ubigeo));
 
     // Enter new dots - fade in
+    // Mita dots are light (on dark background), non-mita dots are dark (on light background)
     const entering = dots.enter()
       .append('circle')
       .attr('cx', d => xScale(d.x))
       .attr('cy', d => yScale(d.y))
       .attr('r', 5)
-      .attr('fill', d => d.isInside ? colors.mita : colors.nonmita)
+      .attr('fill', d => d.isInside ? '#E2E8F0' : colors.nonmita)
       .attr('opacity', 0)
       .on('mouseenter', (event, d) => {
         const rect = svgRef.current?.getBoundingClientRect();
@@ -566,8 +641,8 @@ const RDDChart: React.FC<RDDChartProps> = ({ outcome, phase = 'effect' }) => {
         </p>
         <p className="methodology-note">
           {phase === 'naive-effect'
-            ? 'This simple regression doesn\'t control for geography, elevation, or other factors. The paper\'s estimate uses polynomial RD with geographic controls for a more robust causal estimate.'
-            : 'Simply comparing mita vs. non-mita districts would be misleading—maybe mita regions differed before 1573. Instead, we compare districts just inside vs. just outside the boundary, which shared similar characteristics. The sharp jump at the boundary isolates the mita\'s causal effect.'}
+            ? 'This simple regression doesn\'t control for geography, elevation, or other factors. The paper uses polynomial RD with geographic controls for a more robust causal estimate.'
+            : 'Comparing districts just inside vs. outside the boundary isolates the mita\'s causal effect, since these areas shared similar characteristics before 1573.'}
         </p>
         <p className="stats-note">
           <strong>N = {data.length} districts</strong> |

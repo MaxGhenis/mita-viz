@@ -1,9 +1,10 @@
-/* Design system - using mita red as accent */
+/* Design system - colors are injected from colors.ts at runtime */
 :root {
-  /* Mita (treatment) colors */
-  --mita: #e74c3c;
-  --mita-dark: #c0392b;
-  --mita-darker: #a33025;
+  /* Mita (treatment) colors - set by App.tsx from colors.ts */
+  --mita: #4A5568;
+  --mita-dark: #2D3748;
+  --mita-darker: #1A202C;
+  --mita-rgb: 74, 85, 104;
 
   /* Non-mita (control) colors */
   --nonmita: #718096;
@@ -142,8 +143,8 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .legend-color.mita-region {
-  background: rgba(231, 76, 60, 0.5);
-  border: 2px solid var(--mita-dark);
+  background: #222939;
+  border: 2px solid #1A202C;
 }
 
 .legend-color.outside-region {

@@ -86,7 +86,7 @@ const steps: StepData[] = [
   {
     id: 'roads',
     title: 'Finding #3: Less infrastructure',
-    text: 'Mita districts also have fewer roads today. Dell traces this to the mita\'s effect on land tenure: without the labor draft, large haciendas formed and invested in roads to attract workers and transport goods.',
+    text: 'Mita districts have 36 fewer meters of road per km²—over half the baseline density. Dell traces this to land tenure: without the labor draft, large haciendas formed and invested in roads to attract workers and transport goods.',
     visual: 'rdd-roads',
     rddPhase: 'effect',
   },
@@ -100,7 +100,7 @@ const steps: StepData[] = [
   {
     id: 'conclusion',
     title: 'History casts a long shadow',
-    text: 'Dell\'s study reveals how colonial institutions shape economic outcomes for centuries. Policymakers must understand these deep roots of inequality to design effective interventions that break cycles of poverty.',
+    text: 'Dell\'s study shows that institutions can shape economic outcomes for centuries. The mita\'s arbitrary boundary provides a rare opportunity to measure these persistent effects precisely.',
     visual: 'conclusion',
   },
 ];
@@ -144,7 +144,7 @@ const ScrollyStory: React.FC = () => {
               <h1>The mining mita</h1>
               <p className="intro-subtitle">How a 450-year-old colonial institution still shapes Peru today</p>
               <p className="intro-citation">
-                Based on <a href="https://scholar.harvard.edu/dell/publications/persistent-effects-perus-mining-mita" target="_blank" rel="noopener noreferrer">Dell (2010), <em>Econometrica</em></a>
+                Based on Dell (2010), <em>Econometrica</em> [<a href="https://scholar.harvard.edu/files/dell/files/ecta8121_0.pdf" target="_blank" rel="noopener noreferrer">PDF</a>]
               </p>
               <p className="intro-author">Built by <a href="https://maxghenis.com" target="_blank" rel="noopener noreferrer">Max Ghenis</a></p>
               <p className="scroll-hint">↓ Scroll to explore</p>
@@ -217,7 +217,7 @@ const ScrollyStory: React.FC = () => {
               <ul>
                 <li><strong>+6pp higher</strong> child stunting</li>
                 <li><strong>~22% lower</strong> household consumption</li>
-                <li><strong>Fewer</strong> roads</li>
+                <li><strong>~50% lower</strong> road density</li>
               </ul>
               <p className="conclusion-note">
                 These effects persist 200+ years after Spain abolished the mita.
@@ -243,7 +243,7 @@ const ScrollyStory: React.FC = () => {
       <footer className="scrolly-footer">
         <p>
           Based on Dell, M. (2010). "The Persistent Effects of Peru's Mining Mita."
-          <em> Econometrica</em>, 78(6), 1863-1903.
+          <em> Econometrica</em>, 78(6), 1863-1903. [<a href="https://scholar.harvard.edu/files/dell/files/ecta8121_0.pdf" target="_blank" rel="noopener noreferrer">PDF</a>]
         </p>
         <p className="data-note">
           Visualizations use real district boundaries and outcome data from the paper's{' '}
