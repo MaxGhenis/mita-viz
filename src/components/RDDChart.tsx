@@ -338,17 +338,14 @@ const RDDChart: React.FC<RDDChartProps> = ({ outcome, phase = 'effect' }) => {
         .attr('stroke-width', 2)
         .attr('stroke-dasharray', '5,5');
 
-      // Fitted lines groups
-      g.append('path').attr('class', 'fitted-line-inside').attr('opacity', 0);
-      g.append('path').attr('class', 'fitted-line-outside').attr('opacity', 0);
+      // Fitted lines groups (will be shown/hidden based on phase)
+      g.append('path').attr('class', 'fitted-line-inside');
+      g.append('path').attr('class', 'fitted-line-outside');
 
       // Dots group
       g.append('g').attr('class', 'dots');
 
-      // Treatment effect brace and label (added AFTER dots so label is on top)
-      g.append('path').attr('class', 'treatment-brace').attr('opacity', 0);
-      g.append('rect').attr('class', 'treatment-label-bg').attr('opacity', 0);
-      g.append('text').attr('class', 'treatment-label').attr('opacity', 0);
+      // Treatment effect elements will be added dynamically when needed
     }
 
     // Update Y scale and axis
@@ -367,130 +364,116 @@ const RDDChart: React.FC<RDDChartProps> = ({ outcome, phase = 'effect' }) => {
     g.select<SVGGElement>('.x-axis')
       .call(d3.axisBottom(xScale).ticks(5).tickFormat(d => String(Math.abs(d as number))));
 
-    // Update grid
+    // Update grid (no transition to avoid flashing domain line)
     g.select<SVGGElement>('.grid-y')
-      .transition()
-      .duration(500)
       .call(d3.axisLeft(yScale).tickSize(-innerWidth).tickFormat(() => ''))
       .call(g => g.select('.domain').remove())
       .call(g => g.selectAll('.tick line').attr('stroke', colors.gridLine).attr('stroke-dasharray', '3,3'));
 
-    // Update fitted lines
+    // Update fitted lines - only show in 'ols', 'naive-effect', and 'effect' phases
     const lineGenerator = d3.line<{ distance: number; fitted: number }>()
       .x(d => xScale(d.distance))
       .y(d => yScale(d.fitted));
 
-    // Show OLS lines in 'ols', 'naive-effect', and 'effect' phases
     const showOLS = phase === 'ols' || phase === 'naive-effect' || phase === 'effect';
 
-    // For 'dots' phase, set opacity immediately without transition to prevent flash
     const insideLineEl = g.select('.fitted-line-inside').datum(insideLine);
     const outsideLineEl = g.select('.fitted-line-outside').datum(outsideLine);
 
-    if (phase === 'dots') {
-      // No transition - immediately hide
+    if (showOLS) {
       insideLineEl
         .attr('d', lineGenerator)
         .attr('fill', 'none')
         .attr('stroke', colors.mitaDark)
         .attr('stroke-width', 3)
-        .attr('opacity', 0);
+        .attr('opacity', 1);
       outsideLineEl
         .attr('d', lineGenerator)
         .attr('fill', 'none')
         .attr('stroke', colors.nonmita)
         .attr('stroke-width', 3)
-        .attr('opacity', 0);
+        .attr('opacity', 1);
     } else {
-      // Transition for other phases
-      insideLineEl
-        .transition()
-        .duration(500)
-        .attr('d', lineGenerator)
-        .attr('fill', 'none')
-        .attr('stroke', colors.mitaDark)
-        .attr('stroke-width', 3)
-        .attr('opacity', showOLS ? 1 : 0);
-      outsideLineEl
-        .transition()
-        .duration(500)
-        .attr('d', lineGenerator)
-        .attr('fill', 'none')
-        .attr('stroke', colors.nonmita)
-        .attr('stroke-width', 3)
-        .attr('opacity', showOLS ? 1 : 0);
+      // Remove path data entirely for 'dots' phase
+      insideLineEl.attr('d', null).attr('opacity', 0);
+      outsideLineEl.attr('d', null).attr('opacity', 0);
     }
 
     // Show treatment effect highlight only in 'naive-effect' or 'effect' phase
     const showEffect = phase === 'naive-effect' || phase === 'effect';
 
-    // Get the y positions at x=0 for both lines (the intercepts)
-    // Inside line starts at 0, outside line ends at 0
-    const insideY0 = insideLine.find(d => d.distance === 0)?.fitted ?? insideLine[0]?.fitted;
-    const outsideY0 = outsideLine.find(d => d.distance === 0)?.fitted ?? outsideLine[outsideLine.length - 1]?.fitted;
+    // Remove treatment effect elements if not needed
+    if (!showEffect) {
+      g.selectAll('.treatment-brace, .treatment-label-bg, .treatment-label').remove();
+    } else {
+      // Get the y positions at x=0 for both lines (the intercepts)
+      const insideY0 = insideLine.find(d => d.distance === 0)?.fitted ?? insideLine[0]?.fitted;
+      const outsideY0 = outsideLine.find(d => d.distance === 0)?.fitted ?? outsideLine[outsideLine.length - 1]?.fitted;
 
-    if (insideY0 !== undefined && outsideY0 !== undefined) {
-      const y1 = yScale(insideY0);
-      const y2 = yScale(outsideY0);
-      const xPos = xScale(0);
+      if (insideY0 !== undefined && outsideY0 !== undefined) {
+        const y1 = yScale(insideY0);
+        const y2 = yScale(outsideY0);
+        const xPos = xScale(0);
 
-      // Highlight the gap on the boundary line (vertical segment between intercepts)
-      g.select('.treatment-brace')
-        .transition()
-        .duration(500)
-        .attr('d', `M ${xPos} ${y1} L ${xPos} ${y2}`)
-        .attr('fill', 'none')
-        .attr('stroke', colors.mitaDark)
-        .attr('stroke-width', 4)
-        .attr('opacity', showEffect ? 1 : 0);
+        // Format treatment effect label
+        const formatEffect = () => {
+          if (outcome === 'consumption') {
+            const pctChange = (Math.exp(discontinuity) - 1) * 100;
+            return `${pctChange > 0 ? '+' : ''}${pctChange.toFixed(0)}%`;
+          } else if (outcome === 'stunting') {
+            return `${discontinuity > 0 ? '+' : ''}${discontinuity.toFixed(1)}pp`;
+          } else {
+            return `${discontinuity > 0 ? '+' : ''}${discontinuity.toFixed(1)} km`;
+          }
+        };
 
-      // Format treatment effect label (mita effect = inside - outside)
-      const formatEffect = () => {
-        if (outcome === 'consumption') {
-          const pctChange = (Math.exp(discontinuity) - 1) * 100;
-          return `${pctChange > 0 ? '+' : ''}${pctChange.toFixed(0)}%`;
-        } else if (outcome === 'stunting') {
-          return `${discontinuity > 0 ? '+' : ''}${discontinuity.toFixed(1)}pp`;
-        } else {
-          return `${discontinuity > 0 ? '+' : ''}${discontinuity.toFixed(1)} km`;
+        const labelText = formatEffect();
+        const labelPadding = { x: 10, y: 6 };
+        const labelWidth = labelText.length * 10 + labelPadding.x * 2;
+        const labelHeight = 28;
+        const labelX = xPos + 20;
+        const labelY = (y1 + y2) / 2;
+
+        // Create elements if they don't exist
+        if (g.select('.treatment-brace').empty()) {
+          g.append('path').attr('class', 'treatment-brace');
         }
-      };
+        if (g.select('.treatment-label-bg').empty()) {
+          g.append('rect').attr('class', 'treatment-label-bg');
+        }
+        if (g.select('.treatment-label').empty()) {
+          g.append('text').attr('class', 'treatment-label');
+        }
 
-      const labelText = showEffect ? formatEffect() : '';
-      const labelPadding = { x: 10, y: 6 };
-      const labelWidth = labelText.length * 10 + labelPadding.x * 2;
-      const labelHeight = 28;
-      // Position label to the RIGHT of the gap highlight
-      const labelX = xPos + 12;
-      const labelY = (y1 + y2) / 2;
+        // Highlight the gap on the boundary line
+        g.select('.treatment-brace')
+          .attr('d', `M ${xPos} ${y1} L ${xPos} ${y2}`)
+          .attr('fill', 'none')
+          .attr('stroke', colors.mitaDark)
+          .attr('stroke-width', 4);
 
-      // Background box for label - solid white background
-      g.select('.treatment-label-bg')
-        .transition()
-        .duration(500)
-        .attr('x', labelX - labelPadding.x)
-        .attr('y', labelY - labelHeight / 2)
-        .attr('width', labelWidth)
-        .attr('height', labelHeight)
-        .attr('rx', 4)
-        .attr('fill', 'white')
-        .attr('fill-opacity', 1)
-        .attr('stroke', colors.mitaDark)
-        .attr('stroke-width', 2)
-        .attr('opacity', showEffect ? 1 : 0)
-        .style('filter', 'drop-shadow(0 2px 4px rgba(0,0,0,0.15))');
+        // Background box for label
+        g.select('.treatment-label-bg')
+          .attr('x', labelX - labelPadding.x)
+          .attr('y', labelY - labelHeight / 2)
+          .attr('width', labelWidth)
+          .attr('height', labelHeight)
+          .attr('rx', 4)
+          .attr('fill', 'white')
+          .attr('stroke', colors.mitaDark)
+          .attr('stroke-width', 2)
+          .style('filter', 'drop-shadow(0 2px 4px rgba(0,0,0,0.15))');
 
-      g.select('.treatment-label')
-        .transition()
-        .duration(500)
-        .attr('x', labelX)
-        .attr('y', labelY)
-        .attr('dy', '0.35em')
-        .attr('font-size', '14px')
-        .attr('font-weight', '700')
-        .attr('fill', colors.mitaDark)
-        .attr('opacity', showEffect ? 1 : 0)
-        .text(labelText);
+        // Label text
+        g.select('.treatment-label')
+          .attr('x', labelX)
+          .attr('y', labelY)
+          .attr('dy', '0.35em')
+          .attr('font-size', '14px')
+          .attr('font-weight', '700')
+          .attr('fill', colors.mitaDark)
+          .text(labelText);
+      }
     }
 
     // Update dots with transitions - separate animatable from non-animatable
