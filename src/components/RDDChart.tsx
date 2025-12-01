@@ -197,17 +197,16 @@ const RDDChart: React.FC<RDDChartProps> = ({ outcome, phase = 'effect' }) => {
     outsideLineLinear,
     insideLinePoly,
     outsideLinePoly,
+    naiveDiscontinuity,
     paperDiscontinuity
   } = useMemo(
     () => calculateFittedLines(outcome),
     [outcome]
   );
 
-  // Always use paper's discontinuity
-  const discontinuity = paperDiscontinuity;
-
-  // Use linear lines for early phases, polynomial for paper's effect phase
+  // Use naive estimate for early phases, paper's estimate for 'effect' phase
   const usePolynomial = phase === 'effect';
+  const discontinuity = usePolynomial ? paperDiscontinuity : naiveDiscontinuity;
   const insideLine = usePolynomial ? insideLinePoly : insideLineLinear;
   const outsideLine = usePolynomial ? outsideLinePoly : outsideLineLinear;
 
