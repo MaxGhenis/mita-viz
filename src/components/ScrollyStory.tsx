@@ -105,8 +105,22 @@ const steps: StepData[] = [
   },
 ];
 
+// Helper to get RDD outcome from visual type
+const getOutcomeFromVisual = (visual: StepData['visual']): 'consumption' | 'stunting' | 'roads' | null => {
+  if (visual === 'rdd-consumption') return 'consumption';
+  if (visual === 'rdd-stunting') return 'stunting';
+  if (visual === 'rdd-roads') return 'roads';
+  return null;
+};
+
+// Filter steps by visual type
+const mapSteps = steps.filter(s => s.visual === 'map');
+const rddSteps = steps.filter(s => s.visual.startsWith('rdd-'));
+const conclusionSteps = steps.filter(s => s.visual === 'conclusion');
+
 const ScrollyStory: React.FC = () => {
   const [currentStep, setCurrentStep] = useState(0);
+  const currentStepData = steps[currentStep];
 
   const onStepEnter = ({ data }: { data: StepData }) => {
     setCurrentStep(steps.findIndex(s => s.id === data.id));
@@ -153,14 +167,14 @@ const ScrollyStory: React.FC = () => {
       <section className="scrolly-section">
         <div className="sticky-graphic">
           <div className="graphic-container">
-            <MitaMap showDistricts={steps[currentStep]?.showDistricts ?? false} />
+            <MitaMap showDistricts={currentStepData?.showDistricts ?? false} />
           </div>
         </div>
         <div className="scrolly-text">
           <Scrollama onStepEnter={onStepEnter} offset={0.5}>
-            {steps.slice(1, 5).map((step, idx) => (
+            {mapSteps.map((step) => (
               <Step key={step.id} data={step}>
-                <div className={`narrative-step ${currentStep === idx + 1 ? 'active' : ''}`}>
+                <div className={`narrative-step ${currentStepData?.id === step.id ? 'active' : ''}`}>
                   <h2>{step.title}</h2>
                   <p>{step.text}</p>
                 </div>
@@ -175,20 +189,16 @@ const ScrollyStory: React.FC = () => {
         <div className="sticky-graphic">
           <div className="graphic-container">
             <RDDChart
-              outcome={
-                currentStep >= 10 ? 'roads' :
-                currentStep >= 9 ? 'stunting' :
-                'consumption'
-              }
-              phase={steps[currentStep]?.rddPhase ?? 'effect'}
+              outcome={getOutcomeFromVisual(currentStepData?.visual) ?? 'stunting'}
+              phase={currentStepData?.rddPhase ?? 'effect'}
             />
           </div>
         </div>
         <div className="scrolly-text">
           <Scrollama onStepEnter={onStepEnter} offset={0.5}>
-            {steps.slice(5, 12).map((step, idx) => (
+            {rddSteps.map((step) => (
               <Step key={step.id} data={step}>
-                <div className={`narrative-step ${currentStep === idx + 5 ? 'active' : ''}`}>
+                <div className={`narrative-step ${currentStepData?.id === step.id ? 'active' : ''}`}>
                   <h2>{step.title}</h2>
                   <p>{step.text}</p>
                 </div>
@@ -206,7 +216,7 @@ const ScrollyStory: React.FC = () => {
               <h2>Key takeaways</h2>
               <ul>
                 <li><strong>+6pp higher</strong> child stunting</li>
-                <li><strong>~25% lower</strong> household consumption</li>
+                <li><strong>~22% lower</strong> household consumption</li>
                 <li><strong>Fewer</strong> roads</li>
               </ul>
               <p className="conclusion-note">
@@ -217,12 +227,14 @@ const ScrollyStory: React.FC = () => {
         </div>
         <div className="scrolly-text">
           <Scrollama onStepEnter={onStepEnter} offset={0.5}>
-            <Step data={steps[10]}>
-              <div className={`narrative-step ${currentStep === 10 ? 'active' : ''}`}>
-                <h2>{steps[10].title}</h2>
-                <p>{steps[10].text}</p>
-              </div>
-            </Step>
+            {conclusionSteps.map((step) => (
+              <Step key={step.id} data={step}>
+                <div className={`narrative-step ${currentStepData?.id === step.id ? 'active' : ''}`}>
+                  <h2>{step.title}</h2>
+                  <p>{step.text}</p>
+                </div>
+              </Step>
+            ))}
           </Scrollama>
         </div>
       </section>
