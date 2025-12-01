@@ -260,13 +260,13 @@ const RDDChart: React.FC<RDDChartProps> = ({ outcome, phase = 'effect' }) => {
         .attr('stroke-dasharray', '5,5');
 
       // Fitted lines groups
-      g.append('path').attr('class', 'fitted-line-inside');
-      g.append('path').attr('class', 'fitted-line-outside');
+      g.append('path').attr('class', 'fitted-line-inside').attr('opacity', 0);
+      g.append('path').attr('class', 'fitted-line-outside').attr('opacity', 0);
 
       // Treatment effect brace group (added before dots so dots are on top)
-      g.append('path').attr('class', 'treatment-brace');
-      g.append('rect').attr('class', 'treatment-label-bg');
-      g.append('text').attr('class', 'treatment-label');
+      g.append('path').attr('class', 'treatment-brace').attr('opacity', 0);
+      g.append('rect').attr('class', 'treatment-label-bg').attr('opacity', 0);
+      g.append('text').attr('class', 'treatment-label').attr('opacity', 0);
 
       // Dots group
       g.append('g').attr('class', 'dots');
