@@ -86,7 +86,7 @@ const steps: StepData[] = [
   {
     id: 'roads',
     title: 'Finding #3: Less infrastructure',
-    text: 'Mita districts have 36 fewer meters of road per km²—over half the baseline density. Dell traces this to land tenure: without the labor draft, large haciendas formed and invested in roads to attract workers and transport goods.',
+    text: 'Mita districts have 36 fewer meters of road per km²—about a third less than the non-mita average of 108 m/km². Dell traces this to land tenure: without the labor draft, large haciendas formed and invested in roads to attract workers and transport goods.',
     visual: 'rdd-roads',
     rddPhase: 'effect',
   },
@@ -217,7 +217,7 @@ const ScrollyStory: React.FC = () => {
               <ul>
                 <li><strong>+6pp higher</strong> child stunting</li>
                 <li><strong>~22% lower</strong> household consumption</li>
-                <li><strong>~50% lower</strong> road density</li>
+                <li><strong>~33% lower</strong> road density</li>
               </ul>
               <p className="conclusion-note">
                 These effects persist 200+ years after Spain abolished the mita.
