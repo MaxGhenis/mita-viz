@@ -480,7 +480,7 @@ const RDDChart: React.FC<RDDChartProps> = ({ outcome, phase = 'effect' }) => {
       const labelX = xPos + braceWidth * 2;
       const labelY = (y1 + y2) / 2;
 
-      // Background box for label - more opaque and larger
+      // Background box for label - solid white background
       g.select('.treatment-label-bg')
         .transition()
         .duration(500)
@@ -490,9 +490,11 @@ const RDDChart: React.FC<RDDChartProps> = ({ outcome, phase = 'effect' }) => {
         .attr('height', labelHeight)
         .attr('rx', 4)
         .attr('fill', 'white')
+        .attr('fill-opacity', 1)
         .attr('stroke', colors.mitaDark)
         .attr('stroke-width', 2)
-        .attr('opacity', showEffect ? 1 : 0);
+        .attr('opacity', showEffect ? 1 : 0)
+        .style('filter', 'drop-shadow(0 2px 4px rgba(0,0,0,0.15))');
 
       g.select('.treatment-label')
         .transition()
