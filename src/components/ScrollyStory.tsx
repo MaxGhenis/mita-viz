@@ -10,7 +10,7 @@ interface StepData {
   text: string;
   visual: 'intro' | 'map' | 'rdd-consumption' | 'rdd-stunting' | 'rdd-roads' | 'conclusion';
   showDistricts?: boolean;
-  rddPhase?: 'dots' | 'ols' | 'effect'; // Phase of RDD chart reveal
+  rddPhase?: 'dots' | 'ols' | 'naive-effect' | 'effect'; // Phase of RDD chart reveal
 }
 
 const steps: StepData[] = [
@@ -63,9 +63,16 @@ const steps: StepData[] = [
     rddPhase: 'ols',
   },
   {
+    id: 'naive-effect',
+    title: 'A first estimate',
+    text: 'Our simple regression shows a gap at the boundary. But this naive estimate doesn\'t account for geography, elevation, or other factors that might also vary at the boundary.',
+    visual: 'rdd-consumption',
+    rddPhase: 'naive-effect',
+  },
+  {
     id: 'consumption',
-    title: 'The discontinuity',
-    text: 'The key insight: there\'s a sharp jump at the boundary (distance = 0). This gap—approximately 25% lower consumption in mita districts—is the causal effect. Districts just inside vs. just outside were nearly identical before 1573, so the gap must be due to the mita.',
+    title: 'The controlled estimate',
+    text: 'Dell\'s paper uses polynomial RD with controls for elevation, slope, and other geographic factors. The refined estimate: 25% lower consumption in mita districts. The robust result confirms this isn\'t driven by geography.',
     visual: 'rdd-consumption',
     rddPhase: 'effect',
   },
@@ -169,8 +176,8 @@ const ScrollyStory: React.FC = () => {
           <div className="graphic-container">
             <RDDChart
               outcome={
-                currentStep >= 9 ? 'roads' :
-                currentStep >= 8 ? 'stunting' :
+                currentStep >= 10 ? 'roads' :
+                currentStep >= 9 ? 'stunting' :
                 'consumption'
               }
               phase={steps[currentStep]?.rddPhase ?? 'effect'}
@@ -179,7 +186,7 @@ const ScrollyStory: React.FC = () => {
         </div>
         <div className="scrolly-text">
           <Scrollama onStepEnter={onStepEnter} offset={0.5}>
-            {steps.slice(5, 11).map((step, idx) => (
+            {steps.slice(5, 12).map((step, idx) => (
               <Step key={step.id} data={step}>
                 <div className={`narrative-step ${currentStep === idx + 5 ? 'active' : ''}`}>
                   <h2>{step.title}</h2>

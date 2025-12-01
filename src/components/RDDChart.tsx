@@ -5,7 +5,7 @@ import { colors } from '../colors';
 
 interface RDDChartProps {
   outcome: 'consumption' | 'stunting' | 'roads';
-  phase?: 'dots' | 'ols' | 'effect'; // Progressive reveal phase
+  phase?: 'dots' | 'ols' | 'naive-effect' | 'effect'; // Progressive reveal phase
 }
 
 interface DistrictData {
@@ -100,13 +100,16 @@ const calculateFittedLines = (outcome: 'consumption' | 'stunting' | 'roads') => 
     outsideLine.push({ distance: d, fitted: outsideOLS.intercept + outsideOLS.slope * d });
   }
 
-  // Use the paper's regression discontinuity estimates
+  // Naive OLS discontinuity (our simple estimate)
+  const naiveDiscontinuity = insideOLS.intercept - outsideOLS.intercept;
+
+  // Paper's controlled RD estimates
   // For stunting, convert from proportion to percentage points
-  const discontinuity = outcome === 'stunting'
+  const paperDiscontinuity = outcome === 'stunting'
     ? PAPER_COEFFICIENTS[outcome] * 100  // Convert to percentage points
     : PAPER_COEFFICIENTS[outcome];
 
-  return { insideLine, outsideLine, discontinuity };
+  return { insideLine, outsideLine, naiveDiscontinuity, paperDiscontinuity };
 };
 
 const outcomeLabels = {
@@ -120,10 +123,13 @@ const RDDChart: React.FC<RDDChartProps> = ({ outcome, phase = 'effect' }) => {
   const [tooltip, setTooltip] = useState<{ x: number; y: number; data: any } | null>(null);
 
   const data = useMemo(() => processData(outcome), [outcome]);
-  const { insideLine, outsideLine, discontinuity } = useMemo(
+  const { insideLine, outsideLine, naiveDiscontinuity, paperDiscontinuity } = useMemo(
     () => calculateFittedLines(outcome),
     [outcome]
   );
+
+  // Use naive estimate for 'naive-effect' phase, paper's for 'effect' phase
+  const discontinuity = phase === 'naive-effect' ? naiveDiscontinuity : paperDiscontinuity;
 
   const insideData = data.filter((d) => d.isInside);
   const outsideData = data.filter((d) => !d.isInside);
@@ -318,7 +324,7 @@ const RDDChart: React.FC<RDDChartProps> = ({ outcome, phase = 'effect' }) => {
       .attr('opacity', showOLS ? 1 : 0);
 
     // Show treatment effect brace only in 'effect' phase
-    const showEffect = phase === 'effect';
+    const showEffect = phase === 'naive-effect' || phase === 'effect';
 
     // Get the y positions at x=0 for both lines (the intercepts)
     const insideY0 = insideLine.find(d => d.distance === 0)?.fitted ?? insideLine[insideLine.length - 1]?.fitted;
@@ -487,12 +493,13 @@ const RDDChart: React.FC<RDDChartProps> = ({ outcome, phase = 'effect' }) => {
 
       <div className="chart-annotation">
         <p className="discontinuity-note">
-          <strong>Mita effect:</strong> {formatDiscontinuity()}
+          <strong>{phase === 'naive-effect' ? 'Simple OLS estimate' : 'Mita effect (Dell 2010)'}:</strong> {formatDiscontinuity()}
+          {phase === 'naive-effect' && <span style={{ fontSize: '0.85em', color: 'rgb(var(--gray))' }}> (without controls)</span>}
         </p>
         <p className="methodology-note">
-          Simply comparing mita vs. non-mita districts would be misleading—maybe mita regions differed
-          before 1573. Instead, we compare districts just inside vs. just outside the boundary, which
-          shared similar characteristics. The sharp jump at the boundary isolates the mita's causal effect.
+          {phase === 'naive-effect'
+            ? 'This simple regression doesn\'t control for geography, elevation, or other factors. The paper\'s estimate uses polynomial RD with geographic controls for a more robust causal estimate.'
+            : 'Simply comparing mita vs. non-mita districts would be misleading—maybe mita regions differed before 1573. Instead, we compare districts just inside vs. just outside the boundary, which shared similar characteristics. The sharp jump at the boundary isolates the mita\'s causal effect.'}
         </p>
         <p className="stats-note">
           <strong>N = {data.length} districts</strong> |
