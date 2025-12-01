@@ -245,6 +245,7 @@ const RDDChart: React.FC<RDDChartProps> = ({ outcome, phase = 'effect' }) => {
 
       // Treatment effect brace group (added before dots so dots are on top)
       g.append('path').attr('class', 'treatment-brace');
+      g.append('rect').attr('class', 'treatment-label-bg');
       g.append('text').attr('class', 'treatment-label');
 
       // Dots group
@@ -351,17 +352,38 @@ const RDDChart: React.FC<RDDChartProps> = ({ outcome, phase = 'effect' }) => {
         }
       };
 
+      const labelX = xPos + braceWidth * 2 + 8;
+      const labelY = (y1 + y2) / 2;
+      const labelText = showEffect ? formatEffect() : '';
+      const labelPadding = { x: 6, y: 4 };
+      const labelWidth = labelText.length * 7 + labelPadding.x * 2;
+      const labelHeight = 18;
+
+      // Background box for label
+      g.select('.treatment-label-bg')
+        .transition()
+        .duration(500)
+        .attr('x', labelX - labelPadding.x)
+        .attr('y', labelY - labelHeight / 2)
+        .attr('width', labelWidth)
+        .attr('height', labelHeight)
+        .attr('rx', 3)
+        .attr('fill', 'white')
+        .attr('stroke', colors.mitaDark)
+        .attr('stroke-width', 1.5)
+        .attr('opacity', showEffect ? 1 : 0);
+
       g.select('.treatment-label')
         .transition()
         .duration(500)
-        .attr('x', xPos + braceWidth * 2 + 8)
-        .attr('y', (y1 + y2) / 2)
+        .attr('x', labelX)
+        .attr('y', labelY)
         .attr('dy', '0.35em')
         .attr('font-size', '11px')
-        .attr('font-weight', '600')
-        .attr('fill', colors.textDark)
+        .attr('font-weight', '700')
+        .attr('fill', colors.mitaDark)
         .attr('opacity', showEffect ? 1 : 0)
-        .text(showEffect ? formatEffect() : '');
+        .text(labelText);
     }
 
     // Update dots with transitions - separate animatable from non-animatable
