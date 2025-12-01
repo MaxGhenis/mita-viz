@@ -86,7 +86,7 @@ const steps: StepData[] = [
   {
     id: 'roads',
     title: 'Finding #3: Less infrastructure',
-    text: 'Mita districts also have substantially fewer roads today. Dell traces this to the mita\'s effect on land tenure: without the labor draft, large haciendas formed and invested in roads to attract workers and transport goods.',
+    text: 'Mita districts also have fewer roads today. Dell traces this to the mita\'s effect on land tenure: without the labor draft, large haciendas formed and invested in roads to attract workers and transport goods.',
     visual: 'rdd-roads',
     rddPhase: 'effect',
   },
