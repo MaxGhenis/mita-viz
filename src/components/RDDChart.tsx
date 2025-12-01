@@ -123,8 +123,9 @@ const calculateFittedLines = (outcome: 'consumption' | 'stunting' | 'roads') => 
   const insidePoly = calcQuadraticOLS(insideData);
   const outsidePoly = calcQuadraticOLS(outsideData);
 
-  const minInside = Math.min(...insideData.map((d) => d.distance));
-  const maxOutside = Math.max(...outsideData.map((d) => d.distance));
+  // With flipped convention: inside (mita) is positive, outside (non-mita) is negative
+  const maxInside = Math.max(...insideData.map((d) => d.distance));  // Positive values
+  const minOutside = Math.min(...outsideData.map((d) => d.distance)); // Negative values
 
   // Paper's discontinuity (mita effect = inside - outside)
   const paperDiscontinuity = outcome === 'stunting'
@@ -140,26 +141,30 @@ const calculateFittedLines = (outcome: 'consumption' | 'stunting' | 'roads') => 
   const paperInsideIntercept = allMean + paperDiscontinuity;
 
   // Generate LINEAR line points (for 'ols' and 'naive-effect' phases)
+  // Inside (mita) goes from 0 to maxInside (positive)
+  // Outside (non-mita) goes from minOutside (negative) to 0
   const insideLineLinear = [
-    { distance: Math.floor(minInside), fitted: insideLinear.intercept + insideLinear.slope * Math.floor(minInside) },
-    { distance: 0, fitted: insideLinear.intercept }
+    { distance: 0, fitted: insideLinear.intercept },
+    { distance: Math.ceil(maxInside), fitted: insideLinear.intercept + insideLinear.slope * Math.ceil(maxInside) }
   ];
   const outsideLineLinear = [
-    { distance: 0, fitted: outsideLinear.intercept },
-    { distance: Math.ceil(maxOutside), fitted: outsideLinear.intercept + outsideLinear.slope * Math.ceil(maxOutside) }
+    { distance: Math.floor(minOutside), fitted: outsideLinear.intercept + outsideLinear.slope * Math.floor(minOutside) },
+    { distance: 0, fitted: outsideLinear.intercept }
   ];
 
   // Generate POLYNOMIAL curve points (for 'effect' phase with paper's adjusted intercepts)
+  // Inside (mita): 0 to maxInside (positive direction)
   const insideLinePoly = [];
-  for (let d = Math.floor(minInside); d <= 0; d += 1) {
+  for (let d = 0; d <= Math.ceil(maxInside); d += 1) {
     insideLinePoly.push({
       distance: d,
       fitted: paperInsideIntercept + insidePoly.slope * d + insidePoly.quadratic * d * d
     });
   }
 
+  // Outside (non-mita): minOutside (negative) to 0
   const outsideLinePoly = [];
-  for (let d = 0; d <= Math.ceil(maxOutside); d += 1) {
+  for (let d = Math.floor(minOutside); d <= 0; d += 1) {
     outsideLinePoly.push({
       distance: d,
       fitted: paperOutsideIntercept + outsidePoly.slope * d + outsidePoly.quadratic * d * d
@@ -403,8 +408,9 @@ const RDDChart: React.FC<RDDChartProps> = ({ outcome, phase = 'effect' }) => {
     const showEffect = phase === 'naive-effect' || phase === 'effect';
 
     // Get the y positions at x=0 for both lines (the intercepts)
-    const insideY0 = insideLine.find(d => d.distance === 0)?.fitted ?? insideLine[insideLine.length - 1]?.fitted;
-    const outsideY0 = outsideLine.find(d => d.distance === 0)?.fitted ?? outsideLine[0]?.fitted;
+    // Inside line starts at 0, outside line ends at 0
+    const insideY0 = insideLine.find(d => d.distance === 0)?.fitted ?? insideLine[0]?.fitted;
+    const outsideY0 = outsideLine.find(d => d.distance === 0)?.fitted ?? outsideLine[outsideLine.length - 1]?.fitted;
 
     if (insideY0 !== undefined && outsideY0 !== undefined) {
       const y1 = yScale(insideY0);
