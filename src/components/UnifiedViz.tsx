@@ -594,11 +594,17 @@ const UnifiedViz: React.FC<UnifiedVizProps> = ({
 
     } else {
       // Morphing/scatter phase
+      // morphT goes from 0 to 1 as t goes from 0.3 to 0.8
       const morphT = Math.min((t - 0.3) / 0.5, 1);
+
+      // Apply easing to morphT for smoother animation
+      const easedMorphT = morphT < 0.5
+        ? 2 * morphT * morphT
+        : 1 - Math.pow(-2 * morphT + 2, 2) / 2;
 
       // First: fade out districts without scatter data
       if (morphT < 1) {
-        const fadeOpacity = Math.max(0, 0.5 - morphT * 0.8);
+        const fadeOpacity = Math.max(0, 0.5 - easedMorphT * 0.8);
         const districtsWithoutData = mergedData.filter(d => !scatterUbigeos.has(d.ubigeo));
 
         g.selectAll('.fading-district')
@@ -662,16 +668,18 @@ const UnifiedViz: React.FC<UnifiedVizProps> = ({
           .data(scatterData, (d: any) => d.ubigeo);
         // No changes needed - dots are preserved from the :not() selector
       } else if (morphT < 1) {
-        // MORPHING PHASE: Show districts shrinking into dots while moving
-        // Districts with scatter data shrink and move to their scatter positions
+        // MORPHING PHASE: Districts morph into circular dots while moving to scatter positions
         const districtsWithData = scatterData;
 
-        // Scale factor: 1 at start, 0 at end (district shrinks to nothing)
-        const districtScale = 1 - morphT;
-        // Dot grows as district shrinks
-        const dotRadius = 5 * morphT;
+        // Use eased values for smoother visual transition
+        // Polygon shrinks and becomes more circular
+        const districtScale = 1 - easedMorphT;
+        // Dot grows as district shrinks - start earlier for overlap
+        const dotRadius = 5 * easedMorphT;
+        // Roundness factor: 0 = original polygon, 1 = perfect circle
+        const roundness = easedMorphT;
 
-        // Draw shrinking districts
+        // Draw morphing districts (polygon → circle)
         g.selectAll('.morphing-district')
           .data(districtsWithData, (d: any) => d.ubigeo)
           .join('path')
@@ -686,37 +694,61 @@ const UnifiedViz: React.FC<UnifiedVizProps> = ({
             const targetY = yScale(d.scatterY);
 
             // Current center position (interpolate from centroid to scatter)
-            const currentCenterX = centroid[0] + (targetX - centroid[0]) * morphT;
-            const currentCenterY = centroid[1] + (targetY - centroid[1]) * morphT;
+            const currentCenterX = centroid[0] + (targetX - centroid[0]) * easedMorphT;
+            const currentCenterY = centroid[1] + (targetY - centroid[1]) * easedMorphT;
 
-            // Transform polygon points: scale around centroid, then translate
-            const scaledCoords = d.polygon.map(p => {
-              const projected = projection([p[1], p[0]]);
-              if (!projected) return [currentCenterX, currentCenterY];
+            // Calculate average radius of the polygon for circle interpolation
+            const projectedPoints = d.polygon.map(p => projection([p[1], p[0]])).filter(Boolean) as [number, number][];
+            if (projectedPoints.length < 3) return '';
 
-              // Scale point relative to original centroid
-              const scaledX = centroid[0] + (projected[0] - centroid[0]) * districtScale;
-              const scaledY = centroid[1] + (projected[1] - centroid[1]) * districtScale;
+            const avgRadius = projectedPoints.reduce((sum, p) => {
+              const dx = p[0] - centroid[0];
+              const dy = p[1] - centroid[1];
+              return sum + Math.sqrt(dx * dx + dy * dy);
+            }, 0) / projectedPoints.length;
 
-              // Translate to current position
-              const finalX = scaledX + (currentCenterX - centroid[0]);
-              const finalY = scaledY + (currentCenterY - centroid[1]);
+            // Target radius for the final dot (slightly larger during transition)
+            const targetRadius = 5 + (avgRadius - 5) * districtScale;
+
+            // Transform polygon points: interpolate between polygon and circle
+            const morphedCoords = projectedPoints.map((projected, i) => {
+              // Original position relative to centroid
+              const dx = projected[0] - centroid[0];
+              const dy = projected[1] - centroid[1];
+              const dist = Math.sqrt(dx * dx + dy * dy);
+              const angle = Math.atan2(dy, dx);
+
+              // Circle position at same angle but uniform radius
+              const circleX = Math.cos(angle) * targetRadius;
+              const circleY = Math.sin(angle) * targetRadius;
+
+              // Interpolate between polygon shape and circle shape
+              const morphedDx = dx * districtScale + circleX * roundness * districtScale;
+              const morphedDy = dy * districtScale + circleY * roundness * districtScale;
+
+              // Blend between original shape morphing and pure circle
+              const blendedX = dx * (1 - roundness) * districtScale + circleX * roundness * districtScale;
+              const blendedY = dy * (1 - roundness) * districtScale + circleY * roundness * districtScale;
+
+              // Final position = current center + blended offset
+              const finalX = currentCenterX + blendedX;
+              const finalY = currentCenterY + blendedY;
 
               return [finalX, finalY];
             });
 
-            // Create SVG path from scaled coordinates
-            if (scaledCoords.length < 3) return '';
-            return 'M' + scaledCoords.map(c => `${c[0]},${c[1]}`).join('L') + 'Z';
+            // Create SVG path from morphed coordinates
+            return 'M' + morphedCoords.map(c => `${c[0]},${c[1]}`).join('L') + 'Z';
           })
           .attr('fill', d => d.isInside ? '#E2E8F0' : colors.nonmita)
           .attr('stroke', d => d.isInside ? '#1A202C' : colors.nonmita)
-          .attr('stroke-width', Math.max(0.5, 1 - morphT))
-          .attr('opacity', 0.8);
+          .attr('stroke-width', Math.max(0.5, 1 - easedMorphT))
+          .attr('opacity', 0.8 * (1 - easedMorphT * 0.3)); // Slight fade as it morphs
 
-        // Also draw growing dots at the same position (for smooth transition)
-        if (morphT > 0.3) {
-          const dotOpacity = (morphT - 0.3) / 0.7; // Fade in during last 70% of morph
+        // Draw growing dots earlier in the transition for smoother handoff
+        if (morphT > 0.2) {
+          // Dots fade in starting at 20% and are fully visible by 80%
+          const dotOpacity = Math.min(1, (morphT - 0.2) / 0.6);
 
           svg.selectAll<SVGCircleElement, typeof scatterData[0]>('.morph-dot')
             .data(scatterData, (d: any) => d.ubigeo)
@@ -731,13 +763,13 @@ const UnifiedViz: React.FC<UnifiedVizProps> = ({
               const geoCoord = projection([d.centroidLon, d.centroidLat]);
               const mapX = geoCoord ? geoCoord[0] : 0;
               const scatterX = xScale(d.scatterX);
-              return mapX + (scatterX - mapX) * morphT;
+              return mapX + (scatterX - mapX) * easedMorphT;
             })
             .attr('cy', d => {
               const geoCoord = projection([d.centroidLon, d.centroidLat]);
               const mapY = geoCoord ? geoCoord[1] : 0;
               const scatterY = yScale(d.scatterY);
-              return mapY + (scatterY - mapY) * morphT;
+              return mapY + (scatterY - mapY) * easedMorphT;
             })
             .attr('r', dotRadius)
             .attr('fill', d => d.isInside ? '#E2E8F0' : colors.nonmita)
