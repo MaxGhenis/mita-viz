@@ -551,6 +551,10 @@ const UnifiedViz: React.FC<UnifiedVizProps> = ({
       // Draw non-mita first, then mita on top
       const sortedData = [...mergedData].sort((a, b) => a.mita - b.mita);
 
+      // When zoomed out, non-mita districts should be invisible (Peru outline shows instead)
+      // When zoomed in, non-mita districts should be visible
+      const nonMitaOpacity = z * 0.5 * polygonOpacity;
+
       if (!showDistricts) {
         // When not showing districts, draw a background layer first
         // with matching stroke to fill anti-aliasing gaps
@@ -568,7 +572,7 @@ const UnifiedViz: React.FC<UnifiedVizProps> = ({
           .attr('fill', d => d.mita === 1 ? '#222939' : colors.nonmitaLight)
           .attr('stroke', d => d.mita === 1 ? '#222939' : colors.nonmitaLight)
           .attr('stroke-width', 1.5)
-          .attr('opacity', d => (d.mita === 1 ? 0.85 : 0.5) * polygonOpacity);
+          .attr('opacity', d => d.mita === 1 ? 0.85 * polygonOpacity : nonMitaOpacity);
       }
 
       // Main district layer
@@ -586,7 +590,7 @@ const UnifiedViz: React.FC<UnifiedVizProps> = ({
         .attr('fill', d => d.mita === 1 ? '#222939' : colors.nonmitaLight)
         .attr('stroke', showDistricts ? (d => d.mita === 1 ? '#1A202C' : colors.nonmita) : 'none')
         .attr('stroke-width', showDistricts ? 1 : 0)
-        .attr('opacity', d => (d.mita === 1 ? 0.85 : 0.5) * polygonOpacity);
+        .attr('opacity', d => d.mita === 1 ? 0.85 * polygonOpacity : nonMitaOpacity);
 
     } else {
       // Morphing/scatter phase
