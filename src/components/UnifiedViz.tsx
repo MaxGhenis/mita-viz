@@ -430,7 +430,7 @@ const UnifiedViz: React.FC<UnifiedVizProps> = ({
         .attr('width', xScale(50) - xScale(0))
         .attr('y', 0)
         .attr('height', innerHeight)
-        .attr('fill', '#222939')
+        .attr('fill', colors.mita)
         .attr('opacity', t);
     }
 
@@ -452,7 +452,7 @@ const UnifiedViz: React.FC<UnifiedVizProps> = ({
         .attr('x', xScale(25))
         .attr('y', 20)
         .attr('text-anchor', 'middle')
-        .attr('fill', '#E2E8F0')
+        .attr('fill', colors.mitaLabel)
         .attr('font-size', '13px')
         .attr('font-weight', '600')
         .attr('opacity', labelOpacity)
@@ -478,7 +478,7 @@ const UnifiedViz: React.FC<UnifiedVizProps> = ({
         .attr('x', innerWidth / 2)
         .attr('y', innerHeight + 40)
         .attr('text-anchor', 'middle')
-        .attr('fill', '#666')
+        .attr('fill', colors.textMuted)
         .attr('font-size', '12px')
         .attr('opacity', axisOpacity)
         .text('Distance from mita boundary (km)');
@@ -539,7 +539,7 @@ const UnifiedViz: React.FC<UnifiedVizProps> = ({
               .attr('y', projected[1])
               .attr('text-anchor', 'middle')
               .attr('dominant-baseline', 'middle')
-              .attr('fill', '#666')
+              .attr('fill', colors.textMuted)
               .attr('font-size', name === 'Peru' ? '14px' : '11px')
               .attr('font-weight', name === 'Peru' ? '600' : '400')
               .attr('opacity', mapOpacity * 0.8)
@@ -569,8 +569,8 @@ const UnifiedViz: React.FC<UnifiedVizProps> = ({
             };
             return pathGenerator(geoJSON);
           })
-          .attr('fill', d => d.mita === 1 ? '#222939' : colors.nonmitaLight)
-          .attr('stroke', d => d.mita === 1 ? '#222939' : colors.nonmitaLight)
+          .attr('fill', d => d.mita === 1 ? colors.mita : colors.nonmitaLight)
+          .attr('stroke', d => d.mita === 1 ? colors.mita : colors.nonmitaLight)
           .attr('stroke-width', 1.5)
           .attr('opacity', d => d.mita === 1 ? 0.85 * polygonOpacity : nonMitaOpacity);
       }
@@ -587,8 +587,8 @@ const UnifiedViz: React.FC<UnifiedVizProps> = ({
           };
           return pathGenerator(geoJSON);
         })
-        .attr('fill', d => d.mita === 1 ? '#222939' : colors.nonmitaLight)
-        .attr('stroke', showDistricts ? (d => d.mita === 1 ? '#1A202C' : colors.nonmita) : 'none')
+        .attr('fill', d => d.mita === 1 ? colors.mita : colors.nonmitaLight)
+        .attr('stroke', showDistricts ? (d => d.mita === 1 ? colors.mitaStroke : colors.nonmita) : 'none')
         .attr('stroke-width', showDistricts ? 1 : 0)
         .attr('opacity', d => d.mita === 1 ? 0.85 * polygonOpacity : nonMitaOpacity);
 
@@ -618,7 +618,7 @@ const UnifiedViz: React.FC<UnifiedVizProps> = ({
             };
             return pathGenerator(geoJSON);
           })
-          .attr('fill', d => d.mita === 1 ? '#222939' : colors.nonmitaLight)
+          .attr('fill', d => d.mita === 1 ? colors.mita : colors.nonmitaLight)
           .attr('stroke', 'none')
           .attr('opacity', fadeOpacity);
       }
@@ -646,9 +646,9 @@ const UnifiedViz: React.FC<UnifiedVizProps> = ({
                 return yVal !== null ? yScale(yVal) : innerHeight / 2;
               })
               .attr('r', 5)
-              .attr('fill', d => d.isInside ? '#E2E8F0' : colors.nonmita)
+              .attr('fill', d => d.isInside ? colors.mita : colors.nonmitaLight)
               .attr('opacity', 0)
-              .attr('stroke', d => d.isInside ? '#1A202C' : '#fff')
+              .attr('stroke', d => d.isInside ? colors.mitaStroke : colors.white)
               .attr('stroke-width', 0.5)
               .call(enter => enter.transition().duration(600).attr('opacity', d => getOutcomeY(d, currentOutcome) !== null ? 0.8 : 0)),
             update => update
@@ -740,8 +740,8 @@ const UnifiedViz: React.FC<UnifiedVizProps> = ({
             // Create SVG path from morphed coordinates
             return 'M' + morphedCoords.map(c => `${c[0]},${c[1]}`).join('L') + 'Z';
           })
-          .attr('fill', d => d.isInside ? '#E2E8F0' : colors.nonmita)
-          .attr('stroke', d => d.isInside ? '#1A202C' : colors.nonmita)
+          .attr('fill', d => d.isInside ? colors.mita : colors.nonmitaLight)
+          .attr('stroke', d => d.isInside ? colors.mitaStroke : colors.nonmita)
           .attr('stroke-width', Math.max(0.5, 1 - easedMorphT))
           .attr('opacity', 0.8 * (1 - easedMorphT * 0.3)); // Slight fade as it morphs
 
@@ -772,9 +772,9 @@ const UnifiedViz: React.FC<UnifiedVizProps> = ({
               return mapY + (scatterY - mapY) * easedMorphT;
             })
             .attr('r', dotRadius)
-            .attr('fill', d => d.isInside ? '#E2E8F0' : colors.nonmita)
+            .attr('fill', d => d.isInside ? colors.mita : colors.nonmitaLight)
             .attr('opacity', dotOpacity * 0.8)
-            .attr('stroke', d => d.isInside ? '#1A202C' : '#fff')
+            .attr('stroke', d => d.isInside ? colors.mitaStroke : colors.white)
             .attr('stroke-width', 0.5);
         }
       } else {
@@ -791,9 +791,9 @@ const UnifiedViz: React.FC<UnifiedVizProps> = ({
           .attr('cx', d => xScale(d.scatterX))
           .attr('cy', d => yScale(d.scatterY))
           .attr('r', 5)
-          .attr('fill', d => d.isInside ? '#E2E8F0' : colors.nonmita)
+          .attr('fill', d => d.isInside ? colors.mita : colors.nonmitaLight)
           .attr('opacity', 0.8)
-          .attr('stroke', d => d.isInside ? '#1A202C' : '#fff')
+          .attr('stroke', d => d.isInside ? colors.mitaStroke : colors.white)
           .attr('stroke-width', 0.5);
       }
     }
@@ -869,7 +869,7 @@ const UnifiedViz: React.FC<UnifiedVizProps> = ({
               .attr('class', 'inside-line')
               .attr('transform', `translate(${margin.left},${margin.top})`)
               .attr('fill', 'none')
-              .attr('stroke', '#E2E8F0')
+              .attr('stroke', colors.textLight)
               .attr('stroke-width', 3)
               .attr('d', lineGenerator)
               .attr('opacity', animateOLS ? 0 : 1)
@@ -926,7 +926,7 @@ const UnifiedViz: React.FC<UnifiedVizProps> = ({
               .attr('x2', xPos)
               .attr('y1', d => d[0])
               .attr('y2', d => d[1])
-              .attr('stroke', '#F7FAFC')
+              .attr('stroke', colors.effectLine)
               .attr('stroke-width', 4)
               .attr('opacity', animateEffect ? 0 : 1)
               .call(enter => animateEffect ? enter.transition().duration(500).delay(300).attr('opacity', 1) : enter),
@@ -966,7 +966,7 @@ const UnifiedViz: React.FC<UnifiedVizProps> = ({
               .attr('height', 28)
               .attr('rx', 4)
               .attr('fill', colors.mitaDarker)
-              .attr('stroke', '#E2E8F0')
+              .attr('stroke', colors.textLight)
               .attr('stroke-width', 2)
               .attr('opacity', animateEffect ? 0 : 1)
               .call(enter => animateEffect ? enter.transition().duration(500).delay(400).attr('opacity', 1) : enter),
@@ -990,7 +990,7 @@ const UnifiedViz: React.FC<UnifiedVizProps> = ({
               .attr('dy', '0.35em')
               .attr('font-size', '14px')
               .attr('font-weight', '700')
-              .attr('fill', '#F7FAFC')
+              .attr('fill', colors.effectLine)
               .text(labelText)
               .attr('opacity', animateEffect ? 0 : 1)
               .call(enter => animateEffect ? enter.transition().duration(500).delay(400).attr('opacity', 1) : enter),
@@ -1028,7 +1028,7 @@ const UnifiedViz: React.FC<UnifiedVizProps> = ({
         style={{
           maxWidth: '100%',
           height: 'auto',
-          background: currentProgress < 0.3 ? '#f5f5f5' : 'transparent',
+          background: currentProgress < 0.3 ? colors.grayLight : 'transparent',
           transition: 'background 0.3s ease'
         }}
       />

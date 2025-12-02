@@ -52,25 +52,33 @@ const MITA_PALETTE = {
 // =============================================================================
 
 export const colors = {
-  // Mita (treatment) colors
-  mita: MITA_PALETTE.main,
-  mitaDark: MITA_PALETTE.dark,
-  mitaDarker: MITA_PALETTE.darker,
+  // Mita (treatment) colors - used for mita region fill on map AND scatter
+  mita: '#222939',           // Dark slate - main mita fill
+  mitaDark: '#2D3748',       // Slightly lighter dark for accents
+  mitaStroke: '#1A202C',     // Darker stroke for mita regions
+  mitaDarker: '#1A202C',     // Alias for mitaStroke (backwards compat)
+  mitaLabel: '#E2E8F0',      // Light text for labels on dark mita background
 
   // Non-mita (control) colors - gray works with any mita palette
-  nonmita: '#718096',
-  nonmitaLight: '#A0AEC0',
+  nonmita: '#718096',        // Medium gray - stroke color
+  nonmitaLight: '#A0AEC0',   // Light gray - main non-mita fill
 
   // UI colors
   textDark: '#2D3748',
+  textLight: '#E2E8F0',      // Light text for dark backgrounds
+  textMuted: '#666666',      // Muted text for labels
   gridLine: '#e0e0e0',
   white: '#FFFFFF',
   black: '#0F1219',
 
   // Grays for backgrounds
-  grayLight: '#E5E9F0',
+  grayLight: '#f5f5f5',      // Map background
   gray: '#607399',
   grayDark: '#222939',
+
+  // Effect annotation colors
+  effectLine: '#F7FAFC',     // White-ish for effect line
+  effectBg: '#1A202C',       // Dark background for effect label
 } as const;
 
 // RGB versions for CSS rgba() usage
