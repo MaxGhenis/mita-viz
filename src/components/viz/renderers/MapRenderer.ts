@@ -2,8 +2,11 @@
 import * as d3 from 'd3';
 import { geoPath } from 'd3-geo';
 import { colors } from '../../../colors';
-import { MergedDistrictData } from '../types';
+import { MergedDistrictData, HighlightMode } from '../types';
 import { OPACITY } from '../constants';
+
+// Distance threshold for "boundary" districts (km)
+const BOUNDARY_THRESHOLD = 25;
 
 interface MapRenderParams {
   g: d3.Selection<SVGGElement, unknown, null, undefined>;
@@ -17,6 +20,7 @@ interface MapRenderParams {
   showDistricts: boolean;
   innerWidth: number;
   innerHeight: number;
+  highlightMode?: HighlightMode;
   onHover?: (district: MergedDistrictData | null, event?: MouseEvent) => void;
 }
 
@@ -32,6 +36,7 @@ export const renderMap = ({
   showDistricts,
   innerWidth,
   innerHeight,
+  highlightMode = 'none',
   onHover,
 }: MapRenderParams): void => {
   const pathGenerator = geoPath().projection(projection);
@@ -68,7 +73,7 @@ export const renderMap = ({
   }
 
   // Draw districts
-  renderDistricts(g, pathGenerator, mergedData, z, polygonOpacity, borderOpacity, showDistricts, onHover);
+  renderDistricts(g, pathGenerator, mergedData, z, polygonOpacity, borderOpacity, showDistricts, highlightMode, onHover);
 };
 
 const renderCountryLabels = (
@@ -108,6 +113,23 @@ const renderCountryLabels = (
   });
 };
 
+// Helper to determine if a district should be highlighted
+const isHighlighted = (d: MergedDistrictData, highlightMode: HighlightMode): boolean => {
+  if (highlightMode === 'none') return false;
+  if (highlightMode === 'mita-only') return d.mita === 1;
+  if (highlightMode === 'nonmita-only') return d.mita === 0;
+  if (highlightMode === 'boundary') {
+    return d.distance !== null && Math.abs(d.distance) <= BOUNDARY_THRESHOLD;
+  }
+  return false;
+};
+
+// Helper to determine if a district should be dimmed
+const isDimmed = (d: MergedDistrictData, highlightMode: HighlightMode): boolean => {
+  if (highlightMode === 'none') return false;
+  return !isHighlighted(d, highlightMode);
+};
+
 const renderDistricts = (
   g: d3.Selection<SVGGElement, unknown, null, undefined>,
   pathGenerator: d3.GeoPath,
@@ -116,13 +138,27 @@ const renderDistricts = (
   polygonOpacity: number,
   borderOpacity: number,
   showDistricts: boolean,
+  highlightMode: HighlightMode,
   onHover?: (district: MergedDistrictData | null, event?: MouseEvent) => void
 ): void => {
-  // Sort: non-mita first, then mita on top
-  const sortedData = [...mergedData].sort((a, b) => a.mita - b.mita);
+  // Sort: non-mita first, then mita on top, then highlighted on top
+  const sortedData = [...mergedData].sort((a, b) => {
+    const aHighlighted = isHighlighted(a, highlightMode) ? 1 : 0;
+    const bHighlighted = isHighlighted(b, highlightMode) ? 1 : 0;
+    if (aHighlighted !== bHighlighted) return aHighlighted - bHighlighted;
+    return a.mita - b.mita;
+  });
 
   // Non-mita opacity scales with zoom
   const nonMitaOpacity = z * OPACITY.district * polygonOpacity;
+
+  // Calculate opacity for a district based on highlight mode
+  const getDistrictOpacity = (d: MergedDistrictData): number => {
+    const baseOpacity = d.mita === 1 ? OPACITY.district * polygonOpacity : nonMitaOpacity;
+    if (highlightMode === 'none') return baseOpacity;
+    if (isDimmed(d, highlightMode)) return baseOpacity * 0.3; // Dim non-highlighted
+    return Math.min(1, baseOpacity * 1.2); // Boost highlighted
+  };
 
   // Background layer to fill anti-aliasing gaps (always drawn for consistent colors)
   g.selectAll('.district-bg')
@@ -139,7 +175,7 @@ const renderDistricts = (
     .attr('fill', d => d.mita === 1 ? colors.mita : colors.nonmitaLight)
     .attr('stroke', d => d.mita === 1 ? colors.mita : colors.nonmitaLight)
     .attr('stroke-width', 1.5)
-    .attr('opacity', d => d.mita === 1 ? OPACITY.district * polygonOpacity : nonMitaOpacity);
+    .attr('opacity', d => getDistrictOpacity(d));
 
   // Main district layer
   g.selectAll<SVGPathElement, MergedDistrictData>('.district')
@@ -154,10 +190,26 @@ const renderDistricts = (
       return pathGenerator(geoJSON);
     })
     .attr('fill', d => d.mita === 1 ? colors.mita : colors.nonmitaLight)
-    .attr('stroke', d => d.mita === 1 ? colors.mitaStroke : colors.nonmita)
-    .attr('stroke-width', 1)
-    .attr('stroke-opacity', borderOpacity)
-    .attr('opacity', d => d.mita === 1 ? OPACITY.district * polygonOpacity : nonMitaOpacity)
+    .attr('stroke', d => {
+      // Highlighted boundary districts get a special stroke
+      if (highlightMode === 'boundary' && isHighlighted(d, highlightMode)) {
+        return colors.effectLine; // White stroke for boundary districts
+      }
+      return d.mita === 1 ? colors.mitaStroke : colors.nonmita;
+    })
+    .attr('stroke-width', d => {
+      if (highlightMode === 'boundary' && isHighlighted(d, highlightMode)) {
+        return 2; // Thicker stroke for highlighted boundary districts
+      }
+      return 1;
+    })
+    .attr('stroke-opacity', d => {
+      if (highlightMode !== 'none' && isHighlighted(d, highlightMode)) {
+        return 1; // Full stroke opacity for highlighted
+      }
+      return borderOpacity;
+    })
+    .attr('opacity', d => getDistrictOpacity(d))
     .style('cursor', 'pointer')
     .on('mousemove', function(event: MouseEvent, d: MergedDistrictData) {
       if (onHover) onHover(d, event);
@@ -165,6 +217,8 @@ const renderDistricts = (
     })
     .on('mouseout', function() {
       if (onHover) onHover(null);
-      d3.select(this).attr('stroke-width', 1).attr('stroke-opacity', borderOpacity);
+      const baseStrokeWidth = (highlightMode === 'boundary' && isHighlighted(d3.select(this).datum() as MergedDistrictData, highlightMode)) ? 2 : 1;
+      const baseStrokeOpacity = (highlightMode !== 'none' && isHighlighted(d3.select(this).datum() as MergedDistrictData, highlightMode)) ? 1 : borderOpacity;
+      d3.select(this).attr('stroke-width', baseStrokeWidth).attr('stroke-opacity', baseStrokeOpacity);
     });
 };

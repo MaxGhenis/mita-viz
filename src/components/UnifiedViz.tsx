@@ -6,6 +6,7 @@ import {
   OutcomeType,
   ScatterPhase,
   ZoomLevel,
+  HighlightMode,
   MergedDistrictData,
   DEFAULT_DIMENSIONS,
   DEFAULT_MARGIN,
@@ -40,6 +41,7 @@ interface UnifiedVizProps {
   showDistricts: boolean;
   scatterPhase: ScatterPhase;
   zoomLevel: ZoomLevel;
+  highlightMode?: HighlightMode;
 }
 
 const UnifiedViz: React.FC<UnifiedVizProps> = ({
@@ -47,7 +49,8 @@ const UnifiedViz: React.FC<UnifiedVizProps> = ({
   outcome,
   showDistricts,
   scatterPhase,
-  zoomLevel
+  zoomLevel,
+  highlightMode = 'none',
 }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const [dimensions] = useState(DEFAULT_DIMENSIONS);
@@ -255,6 +258,7 @@ const UnifiedViz: React.FC<UnifiedVizProps> = ({
         showDistricts,
         innerWidth,
         innerHeight,
+        highlightMode,
         onHover: handleDistrictHover,
       });
     } else {
@@ -300,7 +304,7 @@ const UnifiedViz: React.FC<UnifiedVizProps> = ({
 
     prevOutcomeRef.current = currentOutcome;
 
-  }, [currentProgress, currentOutcome, scatterPhase, mergedData, scatterData, allScatterData, fittedLines, dimensions, showDistricts, currentZoom, borderOpacity, innerWidth, innerHeight, peruFeature, neighborFeatures, handleDistrictHover]);
+  }, [currentProgress, currentOutcome, scatterPhase, mergedData, scatterData, allScatterData, fittedLines, dimensions, showDistricts, currentZoom, borderOpacity, innerWidth, innerHeight, peruFeature, neighborFeatures, handleDistrictHover, highlightMode]);
 
   const getTitle = () => {
     if (currentProgress < 0.3) return 'The mita boundary';

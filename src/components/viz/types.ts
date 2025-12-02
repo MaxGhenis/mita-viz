@@ -50,6 +50,7 @@ export interface FittedLines {
 export type OutcomeType = 'consumption' | 'stunting' | 'roads';
 export type ScatterPhase = 'dots' | 'ols' | 'naive-effect' | 'effect';
 export type ZoomLevel = 'peru' | 'mita';
+export type HighlightMode = 'none' | 'boundary' | 'mita-only' | 'nonmita-only';
 
 export interface Dimensions {
   width: number;

@@ -13,6 +13,7 @@ interface StepData {
   showDistricts: boolean;
   scatterPhase: 'dots' | 'ols' | 'naive-effect' | 'effect';
   zoomLevel: 'peru' | 'mita';
+  highlightMode?: 'none' | 'boundary' | 'mita-only' | 'nonmita-only';
 }
 
 // All main content steps (between intro and conclusion)
@@ -26,6 +27,7 @@ const mainSteps: StepData[] = [
     showDistricts: false,
     scatterPhase: 'dots',
     zoomLevel: 'peru',
+    highlightMode: 'mita-only',
   },
   {
     id: 'research-question',
@@ -36,6 +38,7 @@ const mainSteps: StepData[] = [
     showDistricts: false,
     scatterPhase: 'dots',
     zoomLevel: 'mita',
+    highlightMode: 'none',
   },
   {
     id: 'naive-comparison',
@@ -46,6 +49,7 @@ const mainSteps: StepData[] = [
     showDistricts: true,
     scatterPhase: 'dots',
     zoomLevel: 'mita',
+    highlightMode: 'none',
   },
   {
     id: 'boundary',
@@ -56,6 +60,7 @@ const mainSteps: StepData[] = [
     showDistricts: true,
     scatterPhase: 'dots',
     zoomLevel: 'mita',
+    highlightMode: 'boundary',
   },
   {
     id: 'transform',
@@ -184,6 +189,7 @@ const ScrollyStory: React.FC = () => {
               showDistricts={currentStep.showDistricts}
               scatterPhase={currentStep.scatterPhase}
               zoomLevel={currentStep.zoomLevel}
+              highlightMode={currentStep.highlightMode}
             />
           </div>
         </div>
