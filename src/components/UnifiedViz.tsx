@@ -190,6 +190,22 @@ const UnifiedViz: React.FC<UnifiedVizProps> = ({
     [scatterData, currentOutcome]
   );
 
+  // Find representative boundary districts for cards (closest to boundary on each side)
+  const boundaryDistricts = useMemo(() => {
+    const threshold = 25; // km
+    const boundary = mergedData.filter(d => d.distance !== null && Math.abs(d.distance) <= threshold);
+
+    // Get closest mita district (smallest positive distance) and closest non-mita (smallest negative)
+    const mitaDistricts = boundary.filter(d => d.isInside).sort((a, b) => (a.distance ?? 0) - (b.distance ?? 0));
+    const nonMitaDistricts = boundary.filter(d => !d.isInside).sort((a, b) => Math.abs(a.distance ?? 0) - Math.abs(b.distance ?? 0));
+
+    // Return a pair of representative districts
+    return {
+      mita: mitaDistricts[0] || null,
+      nonMita: nonMitaDistricts[0] || null,
+    };
+  }, [mergedData]);
+
   // Main render effect
   useEffect(() => {
     if (!svgRef.current) return;
@@ -335,6 +351,57 @@ const UnifiedViz: React.FC<UnifiedVizProps> = ({
             <span className="legend-color outside-region"></span>
             <span>Non-mita region</span>
           </div>
+        </div>
+      )}
+      {/* Boundary district info cards */}
+      {highlightMode === 'boundary' && currentProgress < 0.3 && (
+        <div className="boundary-cards" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
+          {boundaryDistricts.mita && (
+            <div
+              className="boundary-card mita-card"
+              style={{
+                position: 'absolute',
+                top: '35%',
+                right: '5%',
+                background: colors.mita,
+                color: colors.textLight,
+                padding: '10px 14px',
+                borderRadius: '6px',
+                fontSize: '11px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+                border: `2px solid ${colors.effectLine}`,
+                maxWidth: '140px',
+                opacity: currentProgress < 0.2 ? 1 : 1 - (currentProgress - 0.2) / 0.1,
+                transition: 'opacity 0.3s ease',
+              }}
+            >
+              <div style={{ fontWeight: 600, marginBottom: '4px', color: colors.effectLine }}>Mita district</div>
+              <div>{Math.abs(boundaryDistricts.mita.distance ?? 0).toFixed(0)} km inside boundary</div>
+            </div>
+          )}
+          {boundaryDistricts.nonMita && (
+            <div
+              className="boundary-card nonmita-card"
+              style={{
+                position: 'absolute',
+                top: '55%',
+                left: '5%',
+                background: colors.nonmitaLight,
+                color: colors.textDark,
+                padding: '10px 14px',
+                borderRadius: '6px',
+                fontSize: '11px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+                border: `2px solid ${colors.effectLine}`,
+                maxWidth: '140px',
+                opacity: currentProgress < 0.2 ? 1 : 1 - (currentProgress - 0.2) / 0.1,
+                transition: 'opacity 0.3s ease',
+              }}
+            >
+              <div style={{ fontWeight: 600, marginBottom: '4px' }}>Non-mita district</div>
+              <div>{Math.abs(boundaryDistricts.nonMita.distance ?? 0).toFixed(0)} km outside boundary</div>
+            </div>
+          )}
         </div>
       )}
       {tooltip && (
