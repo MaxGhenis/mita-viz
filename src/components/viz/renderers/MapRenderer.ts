@@ -121,24 +121,22 @@ const renderDistricts = (
   // Non-mita opacity scales with zoom
   const nonMitaOpacity = z * OPACITY.district * polygonOpacity;
 
-  if (!showDistricts) {
-    // Background layer to fill anti-aliasing gaps
-    g.selectAll('.district-bg')
-      .data(sortedData)
-      .join('path')
-      .attr('class', 'district-bg')
-      .attr('d', d => {
-        const geoJSON = {
-          type: 'Polygon' as const,
-          coordinates: [d.polygon.map(p => [p[1], p[0]] as [number, number])]
-        };
-        return pathGenerator(geoJSON);
-      })
-      .attr('fill', d => d.mita === 1 ? colors.mita : colors.nonmitaLight)
-      .attr('stroke', d => d.mita === 1 ? colors.mita : colors.nonmitaLight)
-      .attr('stroke-width', 1.5)
-      .attr('opacity', d => d.mita === 1 ? OPACITY.district * polygonOpacity : nonMitaOpacity);
-  }
+  // Background layer to fill anti-aliasing gaps (always drawn for consistent colors)
+  g.selectAll('.district-bg')
+    .data(sortedData)
+    .join('path')
+    .attr('class', 'district-bg')
+    .attr('d', d => {
+      const geoJSON = {
+        type: 'Polygon' as const,
+        coordinates: [d.polygon.map(p => [p[1], p[0]] as [number, number])]
+      };
+      return pathGenerator(geoJSON);
+    })
+    .attr('fill', d => d.mita === 1 ? colors.mita : colors.nonmitaLight)
+    .attr('stroke', d => d.mita === 1 ? colors.mita : colors.nonmitaLight)
+    .attr('stroke-width', 1.5)
+    .attr('opacity', d => d.mita === 1 ? OPACITY.district * polygonOpacity : nonMitaOpacity);
 
   // Main district layer
   g.selectAll('.district')
