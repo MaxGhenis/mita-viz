@@ -265,7 +265,7 @@ const renderOLSLines = (
         .attr('class', 'inside-line')
         .attr('transform', `translate(${margin.left},${margin.top})`)
         .attr('fill', 'none')
-        .attr('stroke', colors.mita)
+        .attr('stroke', colors.mitaStroke)
         .attr('stroke-width', 3)
         .attr('d', lineGenerator)
         .attr('opacity', animate ? 0 : 1)
