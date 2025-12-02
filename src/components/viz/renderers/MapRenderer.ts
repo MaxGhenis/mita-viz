@@ -17,6 +17,7 @@ interface MapRenderParams {
   showDistricts: boolean;
   innerWidth: number;
   innerHeight: number;
+  onHover?: (district: MergedDistrictData | null, event?: MouseEvent) => void;
 }
 
 export const renderMap = ({
@@ -31,6 +32,7 @@ export const renderMap = ({
   showDistricts,
   innerWidth,
   innerHeight,
+  onHover,
 }: MapRenderParams): void => {
   const pathGenerator = geoPath().projection(projection);
   const z = currentZoom;
@@ -66,7 +68,7 @@ export const renderMap = ({
   }
 
   // Draw districts
-  renderDistricts(g, pathGenerator, mergedData, z, polygonOpacity, borderOpacity, showDistricts);
+  renderDistricts(g, pathGenerator, mergedData, z, polygonOpacity, borderOpacity, showDistricts, onHover);
 };
 
 const renderCountryLabels = (
@@ -113,7 +115,8 @@ const renderDistricts = (
   z: number,
   polygonOpacity: number,
   borderOpacity: number,
-  showDistricts: boolean
+  showDistricts: boolean,
+  onHover?: (district: MergedDistrictData | null, event?: MouseEvent) => void
 ): void => {
   // Sort: non-mita first, then mita on top
   const sortedData = [...mergedData].sort((a, b) => a.mita - b.mita);
@@ -139,7 +142,7 @@ const renderDistricts = (
     .attr('opacity', d => d.mita === 1 ? OPACITY.district * polygonOpacity : nonMitaOpacity);
 
   // Main district layer
-  g.selectAll('.district')
+  g.selectAll<SVGPathElement, MergedDistrictData>('.district')
     .data(sortedData)
     .join('path')
     .attr('class', 'district')
@@ -154,5 +157,14 @@ const renderDistricts = (
     .attr('stroke', d => d.mita === 1 ? colors.mitaStroke : colors.nonmita)
     .attr('stroke-width', 1)
     .attr('stroke-opacity', borderOpacity)
-    .attr('opacity', d => d.mita === 1 ? OPACITY.district * polygonOpacity : nonMitaOpacity);
+    .attr('opacity', d => d.mita === 1 ? OPACITY.district * polygonOpacity : nonMitaOpacity)
+    .style('cursor', 'pointer')
+    .on('mousemove', function(event: MouseEvent, d: MergedDistrictData) {
+      if (onHover) onHover(d, event);
+      d3.select(this).attr('stroke-width', 2).attr('stroke-opacity', 1);
+    })
+    .on('mouseout', function() {
+      if (onHover) onHover(null);
+      d3.select(this).attr('stroke-width', 1).attr('stroke-opacity', borderOpacity);
+    });
 };

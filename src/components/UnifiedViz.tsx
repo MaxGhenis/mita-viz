@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useMemo, useState } from 'react';
+import React, { useEffect, useRef, useMemo, useState, useCallback } from 'react';
 import * as d3 from 'd3';
 import southAmerica from '../data/southAmerica.json';
 import { colors } from '../colors';
@@ -6,6 +6,7 @@ import {
   OutcomeType,
   ScatterPhase,
   ZoomLevel,
+  MergedDistrictData,
   DEFAULT_DIMENSIONS,
   DEFAULT_MARGIN,
   OUTCOME_LABELS,
@@ -26,6 +27,12 @@ import {
   renderMorph,
   renderFittedLines,
 } from './viz';
+
+interface TooltipData {
+  x: number;
+  y: number;
+  district: MergedDistrictData;
+}
 
 interface UnifiedVizProps {
   morphProgress: number;
@@ -51,8 +58,23 @@ const UnifiedViz: React.FC<UnifiedVizProps> = ({
   const [currentOutcome, setCurrentOutcome] = useState<OutcomeType>(outcome);
   const [currentZoom, setCurrentZoom] = useState(zoomLevel === 'peru' ? 0 : 1);
   const [borderOpacity, setBorderOpacity] = useState(showDistricts ? 1 : 0);
+  const [tooltip, setTooltip] = useState<TooltipData | null>(null);
   const prevScatterPhaseRef = useRef<string>(scatterPhase);
   const prevOutcomeRef = useRef<string>(outcome);
+
+  // Hover handlers
+  const handleDistrictHover = useCallback((district: MergedDistrictData | null, event?: MouseEvent) => {
+    if (district && event && svgRef.current) {
+      const rect = svgRef.current.getBoundingClientRect();
+      setTooltip({
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top,
+        district,
+      });
+    } else {
+      setTooltip(null);
+    }
+  }, []);
 
   // Memoized data
   const mergedData = useMemo(() => mergeData(), []);
@@ -233,6 +255,7 @@ const UnifiedViz: React.FC<UnifiedVizProps> = ({
         showDistricts,
         innerWidth,
         innerHeight,
+        onHover: handleDistrictHover,
       });
     } else {
       // Morph/scatter phase
@@ -254,6 +277,7 @@ const UnifiedViz: React.FC<UnifiedVizProps> = ({
         innerHeight,
         isOutcomeTransition: isOutcomeOnlyTransition,
         isPhaseTransition,
+        onHover: handleDistrictHover,
       });
     }
 
@@ -276,7 +300,7 @@ const UnifiedViz: React.FC<UnifiedVizProps> = ({
 
     prevOutcomeRef.current = currentOutcome;
 
-  }, [currentProgress, currentOutcome, scatterPhase, mergedData, scatterData, allScatterData, fittedLines, dimensions, showDistricts, currentZoom, borderOpacity, innerWidth, innerHeight, peruFeature, neighborFeatures]);
+  }, [currentProgress, currentOutcome, scatterPhase, mergedData, scatterData, allScatterData, fittedLines, dimensions, showDistricts, currentZoom, borderOpacity, innerWidth, innerHeight, peruFeature, neighborFeatures, handleDistrictHover]);
 
   const getTitle = () => {
     if (currentProgress < 0.3) return 'The mita boundary';
@@ -307,6 +331,46 @@ const UnifiedViz: React.FC<UnifiedVizProps> = ({
             <span className="legend-color outside-region"></span>
             <span>Non-mita region</span>
           </div>
+        </div>
+      )}
+      {tooltip && (
+        <div
+          className="district-tooltip"
+          style={{
+            position: 'absolute',
+            left: tooltip.x + 10,
+            top: tooltip.y - 10,
+            background: colors.grayDark,
+            color: colors.textLight,
+            padding: '8px 12px',
+            borderRadius: '4px',
+            fontSize: '12px',
+            pointerEvents: 'none',
+            zIndex: 100,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+            maxWidth: '200px',
+          }}
+        >
+          <div style={{ fontWeight: 600, marginBottom: '4px' }}>
+            District {tooltip.district.ubigeo}
+          </div>
+          <div style={{ color: tooltip.district.mita === 1 ? colors.mitaLabel : colors.nonmitaLight }}>
+            {tooltip.district.mita === 1 ? 'Mita region' : 'Non-mita region'}
+          </div>
+          {tooltip.district.distance !== null && (
+            <div style={{ marginTop: '4px' }}>
+              Distance: {Math.abs(tooltip.district.distance).toFixed(1)} km {tooltip.district.isInside ? 'inside' : 'outside'}
+            </div>
+          )}
+          {currentOutcome === 'stunting' && tooltip.district.stunting !== null && (
+            <div>Stunting: {(tooltip.district.stunting * 100).toFixed(1)}%</div>
+          )}
+          {currentOutcome === 'consumption' && tooltip.district.consumption !== null && (
+            <div>Consumption: {tooltip.district.consumption.toFixed(2)}</div>
+          )}
+          {currentOutcome === 'roads' && tooltip.district.roads !== null && (
+            <div>Roads: {tooltip.district.roads.toFixed(0)} m/km²</div>
+          )}
         </div>
       )}
     </div>

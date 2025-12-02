@@ -21,6 +21,7 @@ interface MorphParams {
   innerHeight: number;
   isOutcomeTransition: boolean;
   isPhaseTransition: boolean;
+  onHover?: (district: MergedDistrictData | null, event?: MouseEvent) => void;
 }
 
 // Apply easing function for smoother animation
@@ -44,6 +45,7 @@ export const renderMorph = ({
   innerHeight,
   isOutcomeTransition,
   isPhaseTransition,
+  onHover,
 }: MorphParams): void => {
   const easedMorphT = easeInOutQuad(morphT);
 
@@ -54,16 +56,16 @@ export const renderMorph = ({
 
   // Handle different morph states
   if (morphT >= 1 && isOutcomeTransition) {
-    renderOutcomeTransition(svg, allScatterData, xScale, yScale, margin, innerHeight, currentOutcome);
+    renderOutcomeTransition(svg, allScatterData, xScale, yScale, margin, innerHeight, currentOutcome, onHover);
   } else if (morphT >= 1 && isPhaseTransition) {
     // Dots stay the same during phase transition
     svg.selectAll<SVGCircleElement, ScatterDataPoint>('.morph-dot')
       .data(scatterData, (d: any) => d.ubigeo);
   } else if (morphT < 1) {
     renderMorphingDistricts(g, projection, scatterData, xScale, yScale, easedMorphT);
-    renderMorphingDots(svg, projection, scatterData, xScale, yScale, margin, morphT, easedMorphT);
+    renderMorphingDots(svg, projection, scatterData, xScale, yScale, margin, morphT, easedMorphT, onHover);
   } else {
-    renderFullScatterDots(svg, scatterData, xScale, yScale, margin);
+    renderFullScatterDots(svg, scatterData, xScale, yScale, margin, onHover);
   }
 };
 
@@ -100,7 +102,8 @@ const renderOutcomeTransition = (
   yScale: d3.ScaleLinear<number, number>,
   margin: Margin,
   innerHeight: number,
-  currentOutcome: OutcomeType
+  currentOutcome: OutcomeType,
+  onHover?: (district: MergedDistrictData | null, event?: MouseEvent) => void
 ): void => {
   svg.selectAll<SVGCircleElement, ScatterDataPoint>('.morph-dot')
     .data(allScatterData, (d: any) => d.ubigeo)
@@ -116,9 +119,27 @@ const renderOutcomeTransition = (
         .attr('r', 5)
         .attr('fill', d => d.isInside ? colors.mita : colors.nonmitaLight)
         .attr('opacity', 0)
+        .style('cursor', 'pointer')
+        .on('mousemove', function(event: MouseEvent, d: ScatterDataPoint) {
+          if (onHover) onHover(d, event);
+          d3.select(this).attr('r', 7).attr('opacity', 1);
+        })
+        .on('mouseout', function() {
+          if (onHover) onHover(null);
+          d3.select(this).attr('r', 5).attr('opacity', OPACITY.dot);
+        })
         .call(enter => enter.transition().duration(600)
           .attr('opacity', d => getOutcomeY(d, currentOutcome) !== null ? OPACITY.dot : 0)),
       update => update
+        .style('cursor', 'pointer')
+        .on('mousemove', function(event: MouseEvent, d: ScatterDataPoint) {
+          if (onHover) onHover(d, event);
+          d3.select(this).attr('r', 7).attr('opacity', 1);
+        })
+        .on('mouseout', function() {
+          if (onHover) onHover(null);
+          d3.select(this).attr('r', 5).attr('opacity', OPACITY.dot);
+        })
         .call(update => update.transition().duration(600)
           .attr('cy', d => {
             const yVal = getOutcomeY(d, currentOutcome);
@@ -198,7 +219,8 @@ const renderMorphingDots = (
   yScale: d3.ScaleLinear<number, number>,
   margin: Margin,
   morphT: number,
-  easedMorphT: number
+  easedMorphT: number,
+  onHover?: (district: MergedDistrictData | null, event?: MouseEvent) => void
 ): void => {
   if (morphT <= MORPH_TIMING.dotFadeStart) return;
 
@@ -228,7 +250,18 @@ const renderMorphingDots = (
     })
     .attr('r', dotRadius)
     .attr('fill', d => d.isInside ? colors.mita : colors.nonmitaLight)
-    .attr('opacity', dotOpacity * OPACITY.dot);
+    .attr('opacity', dotOpacity * OPACITY.dot)
+    .style('cursor', morphT > 0.8 ? 'pointer' : 'default')
+    .on('mousemove', function(event: MouseEvent, d: ScatterDataPoint) {
+      if (morphT > 0.8 && onHover) {
+        onHover(d, event);
+        d3.select(this).attr('r', 7).attr('opacity', 1);
+      }
+    })
+    .on('mouseout', function() {
+      if (onHover) onHover(null);
+      d3.select(this).attr('r', dotRadius).attr('opacity', dotOpacity * OPACITY.dot);
+    });
 };
 
 const renderFullScatterDots = (
@@ -236,7 +269,8 @@ const renderFullScatterDots = (
   scatterData: ScatterDataPoint[],
   xScale: d3.ScaleLinear<number, number>,
   yScale: d3.ScaleLinear<number, number>,
-  margin: Margin
+  margin: Margin,
+  onHover?: (district: MergedDistrictData | null, event?: MouseEvent) => void
 ): void => {
   svg.selectAll<SVGCircleElement, ScatterDataPoint>('.morph-dot')
     .data(scatterData, (d: any) => d.ubigeo)
@@ -251,5 +285,14 @@ const renderFullScatterDots = (
     .attr('cy', d => yScale(d.scatterY))
     .attr('r', 5)
     .attr('fill', d => d.isInside ? colors.mita : colors.nonmitaLight)
-    .attr('opacity', OPACITY.dot);
+    .attr('opacity', OPACITY.dot)
+    .style('cursor', 'pointer')
+    .on('mousemove', function(event: MouseEvent, d: ScatterDataPoint) {
+      if (onHover) onHover(d, event);
+      d3.select(this).attr('r', 7).attr('opacity', 1);
+    })
+    .on('mouseout', function() {
+      if (onHover) onHover(null);
+      d3.select(this).attr('r', 5).attr('opacity', OPACITY.dot);
+    });
 };
