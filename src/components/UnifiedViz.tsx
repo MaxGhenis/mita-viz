@@ -3,7 +3,7 @@ import * as d3 from 'd3';
 import { geoMercator, geoPath } from 'd3-geo';
 import districtPolygons from '../data/districtPolygons.json';
 import mitaData from '../data/mitaData.json';
-import peruOutline from '../data/peruOutline.json';
+import southAmerica from '../data/southAmerica.json';
 import { colors } from '../colors';
 
 interface UnifiedVizProps {
@@ -352,8 +352,10 @@ const UnifiedViz: React.FC<UnifiedVizProps> = ({
       d.polygon.forEach(p => allCoords.push([p[1], p[0]]));
     });
 
-    // Peru outline coordinates
-    const peruCoords = (peruOutline as any).geometry.coordinates[0] as [number, number][];
+    // South America countries - Peru is the first feature
+    const saFeatures = (southAmerica as any).features;
+    const peruFeature = saFeatures.find((f: any) => f.properties.name === 'Peru');
+    const neighborFeatures = saFeatures.filter((f: any) => f.properties.name !== 'Peru');
 
     // Create projections for both zoom levels
     const mitaProjection = geoMercator()
@@ -362,11 +364,10 @@ const UnifiedViz: React.FC<UnifiedVizProps> = ({
         coordinates: allCoords
       });
 
+    // Peru-centered projection (with some padding to show neighbors)
     const peruProjection = geoMercator()
-      .fitSize([innerWidth, innerHeight], {
-        type: 'Polygon',
-        coordinates: [peruCoords]
-      });
+      .fitSize([innerWidth * 0.7, innerHeight * 0.7], peruFeature.geometry)
+      .translate([innerWidth / 2, innerHeight / 2]);
 
     // Interpolate projection parameters based on zoom level
     const mitaCenter = mitaProjection.center();
@@ -492,17 +493,31 @@ const UnifiedViz: React.FC<UnifiedVizProps> = ({
       // Map phase - show ALL polygons
       const polygonOpacity = 1 - (t / 0.3) * 0.3;
 
-      // Draw Peru outline when zoomed out (z < 1)
+      // Draw South America map when zoomed out (z < 1)
       if (z < 1) {
-        const peruOpacity = (1 - z) * 0.6;
+        const mapOpacity = (1 - z);
+
+        // Draw neighboring countries first (lighter gray)
+        neighborFeatures.forEach((feature: any) => {
+          g.append('path')
+            .datum(feature)
+            .attr('class', 'neighbor-country')
+            .attr('d', pathGenerator as any)
+            .attr('fill', '#ddd')
+            .attr('stroke', '#999')
+            .attr('stroke-width', 0.5)
+            .attr('opacity', mapOpacity * 0.7);
+        });
+
+        // Draw Peru outline (same color as non-mita districts)
         g.append('path')
-          .datum(peruOutline as any)
+          .datum(peruFeature)
           .attr('class', 'peru-outline')
           .attr('d', pathGenerator as any)
-          .attr('fill', '#f0f0f0')
-          .attr('stroke', '#999')
+          .attr('fill', colors.nonmitaLight)
+          .attr('stroke', colors.nonmita)
           .attr('stroke-width', 1)
-          .attr('opacity', peruOpacity);
+          .attr('opacity', mapOpacity * 0.5);
       }
 
       // Draw non-mita first, then mita on top
