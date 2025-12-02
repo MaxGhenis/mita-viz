@@ -6,7 +6,9 @@ import { MergedDistrictData, HighlightMode } from '../types';
 import { OPACITY } from '../constants';
 
 // Distance threshold for "boundary" districts (km)
-const BOUNDARY_THRESHOLD = 25;
+const BOUNDARY_THRESHOLD = 10;
+// Very close threshold for white stroke emphasis
+const VERY_CLOSE_THRESHOLD = 5;
 
 interface MapRenderParams {
   g: d3.Selection<SVGGElement, unknown, null, undefined>;
@@ -124,6 +126,11 @@ const isHighlighted = (d: MergedDistrictData, highlightMode: HighlightMode): boo
   return false;
 };
 
+// Helper to check if district is very close to boundary (gets white stroke)
+const isVeryClose = (d: MergedDistrictData): boolean => {
+  return d.distance !== null && Math.abs(d.distance) <= VERY_CLOSE_THRESHOLD;
+};
+
 // Helper to determine if a district should be dimmed
 const isDimmed = (d: MergedDistrictData, highlightMode: HighlightMode): boolean => {
   if (highlightMode === 'none') return false;
@@ -156,8 +163,8 @@ const renderDistricts = (
   const getDistrictOpacity = (d: MergedDistrictData): number => {
     const baseOpacity = d.mita === 1 ? OPACITY.district * polygonOpacity : nonMitaOpacity;
     if (highlightMode === 'none') return baseOpacity;
-    if (isDimmed(d, highlightMode)) return baseOpacity * 0.3; // Dim non-highlighted
-    return Math.min(1, baseOpacity * 1.2); // Boost highlighted
+    if (isDimmed(d, highlightMode)) return baseOpacity * 0.5; // Dim non-highlighted (subtle)
+    return baseOpacity; // Keep highlighted at normal opacity
   };
 
   // Background layer to fill anti-aliasing gaps (always drawn for consistent colors)
@@ -191,15 +198,18 @@ const renderDistricts = (
     })
     .attr('fill', d => d.mita === 1 ? colors.mita : colors.nonmitaLight)
     .attr('stroke', d => {
-      // Highlighted boundary districts get a special stroke
-      if (highlightMode === 'boundary' && isHighlighted(d, highlightMode)) {
-        return colors.effectLine; // White stroke for boundary districts
+      // Only very close districts get white stroke emphasis
+      if (highlightMode === 'boundary' && isVeryClose(d)) {
+        return colors.effectLine; // White stroke for very close districts
       }
       return d.mita === 1 ? colors.mitaStroke : colors.nonmita;
     })
     .attr('stroke-width', d => {
+      if (highlightMode === 'boundary' && isVeryClose(d)) {
+        return 2.5; // Thick stroke for very close districts
+      }
       if (highlightMode === 'boundary' && isHighlighted(d, highlightMode)) {
-        return 2; // Thicker stroke for highlighted boundary districts
+        return 1.5; // Slightly thicker for boundary districts
       }
       return 1;
     })
@@ -217,8 +227,14 @@ const renderDistricts = (
     })
     .on('mouseout', function() {
       if (onHover) onHover(null);
-      const baseStrokeWidth = (highlightMode === 'boundary' && isHighlighted(d3.select(this).datum() as MergedDistrictData, highlightMode)) ? 2 : 1;
-      const baseStrokeOpacity = (highlightMode !== 'none' && isHighlighted(d3.select(this).datum() as MergedDistrictData, highlightMode)) ? 1 : borderOpacity;
+      const datum = d3.select(this).datum() as MergedDistrictData;
+      let baseStrokeWidth = 1;
+      if (highlightMode === 'boundary' && isVeryClose(datum)) {
+        baseStrokeWidth = 2.5;
+      } else if (highlightMode === 'boundary' && isHighlighted(datum, highlightMode)) {
+        baseStrokeWidth = 1.5;
+      }
+      const baseStrokeOpacity = (highlightMode !== 'none' && isHighlighted(datum, highlightMode)) ? 1 : borderOpacity;
       d3.select(this).attr('stroke-width', baseStrokeWidth).attr('stroke-opacity', baseStrokeOpacity);
     });
 };

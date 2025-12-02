@@ -192,14 +192,19 @@ const UnifiedViz: React.FC<UnifiedVizProps> = ({
 
   // Find representative boundary districts for cards (closest to boundary on each side)
   const boundaryDistricts = useMemo(() => {
-    const threshold = 25; // km
-    const boundary = mergedData.filter(d => d.distance !== null && Math.abs(d.distance) <= threshold);
+    // Get districts sorted by absolute distance from boundary
+    const withDistance = mergedData.filter(d => d.distance !== null);
 
-    // Get closest mita district (smallest positive distance) and closest non-mita (smallest negative)
-    const mitaDistricts = boundary.filter(d => d.isInside).sort((a, b) => (a.distance ?? 0) - (b.distance ?? 0));
-    const nonMitaDistricts = boundary.filter(d => !d.isInside).sort((a, b) => Math.abs(a.distance ?? 0) - Math.abs(b.distance ?? 0));
+    // Mita districts have negative distance, non-mita have positive
+    // Find closest mita (largest negative = closest to 0) and closest non-mita (smallest positive)
+    const mitaDistricts = withDistance
+      .filter(d => d.isInside)
+      .sort((a, b) => Math.abs(a.distance ?? 0) - Math.abs(b.distance ?? 0));
+    const nonMitaDistricts = withDistance
+      .filter(d => !d.isInside)
+      .sort((a, b) => Math.abs(a.distance ?? 0) - Math.abs(b.distance ?? 0));
 
-    // Return a pair of representative districts
+    // Return a pair of representative districts (closest on each side)
     return {
       mita: mitaDistricts[0] || null,
       nonMita: nonMitaDistricts[0] || null,
