@@ -354,8 +354,8 @@ const UnifiedViz: React.FC<UnifiedVizProps> = ({
 
     // South America countries - Peru is the first feature
     const saFeatures = (southAmerica as any).features;
-    const peruFeature = saFeatures.find((f: any) => f.properties.name === 'Peru');
-    const neighborFeatures = saFeatures.filter((f: any) => f.properties.name !== 'Peru');
+    const peruFeature = saFeatures.find((f: any) => f.properties?.name === 'Peru');
+    const neighborFeatures = saFeatures.filter((f: any) => f.properties?.name !== 'Peru');
 
     // Create projections for both zoom levels
     const mitaProjection = geoMercator()
@@ -364,10 +364,9 @@ const UnifiedViz: React.FC<UnifiedVizProps> = ({
         coordinates: allCoords
       });
 
-    // Peru-centered projection (with some padding to show neighbors)
+    // Peru-centered projection - use fitSize for proper fit
     const peruProjection = geoMercator()
-      .fitSize([innerWidth * 0.7, innerHeight * 0.7], peruFeature.geometry)
-      .translate([innerWidth / 2, innerHeight / 2]);
+      .fitSize([innerWidth, innerHeight], peruFeature.geometry);
 
     // Interpolate projection parameters based on zoom level
     const mitaCenter = mitaProjection.center();
@@ -497,16 +496,16 @@ const UnifiedViz: React.FC<UnifiedVizProps> = ({
       if (z < 1) {
         const mapOpacity = (1 - z);
 
-        // Draw neighboring countries first (lighter gray)
+        // Draw neighboring countries (same color as non-mita regions)
         neighborFeatures.forEach((feature: any) => {
           g.append('path')
             .datum(feature)
             .attr('class', 'neighbor-country')
             .attr('d', pathGenerator as any)
-            .attr('fill', '#ddd')
-            .attr('stroke', '#999')
+            .attr('fill', colors.nonmitaLight)
+            .attr('stroke', colors.nonmita)
             .attr('stroke-width', 0.5)
-            .attr('opacity', mapOpacity * 0.7);
+            .attr('opacity', mapOpacity * 0.5);
         });
 
         // Draw Peru outline (same color as non-mita districts)
@@ -518,6 +517,35 @@ const UnifiedViz: React.FC<UnifiedVizProps> = ({
           .attr('stroke', colors.nonmita)
           .attr('stroke-width', 1)
           .attr('opacity', mapOpacity * 0.5);
+
+        // Add country labels
+        const countryLabels = [
+          { name: 'Peru', feature: peruFeature },
+          ...neighborFeatures.map((f: any) => ({ name: f.properties?.name, feature: f }))
+        ];
+
+        countryLabels.forEach(({ name, feature }) => {
+          if (!feature?.geometry) return;
+
+          // Calculate centroid for label placement
+          const centroid = d3.geoCentroid(feature.geometry);
+          const projected = projection(centroid);
+
+          if (projected && projected[0] > 0 && projected[0] < innerWidth &&
+              projected[1] > 0 && projected[1] < innerHeight) {
+            g.append('text')
+              .attr('class', 'country-label')
+              .attr('x', projected[0])
+              .attr('y', projected[1])
+              .attr('text-anchor', 'middle')
+              .attr('dominant-baseline', 'middle')
+              .attr('fill', '#666')
+              .attr('font-size', name === 'Peru' ? '14px' : '11px')
+              .attr('font-weight', name === 'Peru' ? '600' : '400')
+              .attr('opacity', mapOpacity * 0.8)
+              .text(name);
+          }
+        });
       }
 
       // Draw non-mita first, then mita on top
