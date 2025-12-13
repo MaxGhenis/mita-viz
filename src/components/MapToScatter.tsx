@@ -196,8 +196,8 @@ const MapToScatter: React.FC<MapToScatterProps> = ({
 
     const pathGenerator = geoPath().projection(projection);
 
-    // Scatter scales
-    const xScale = d3.scaleLinear().domain([-50, 50]).range([0, innerWidth]);
+    // Scatter scales - clamp to keep dots within visible area
+    const xScale = d3.scaleLinear().domain([-50, 50]).range([0, innerWidth]).clamp(true);
     const yDomain: [number, number] = outcome === 'stunting'
       ? [0, 100]
       : [
@@ -318,13 +318,17 @@ const MapToScatter: React.FC<MapToScatterProps> = ({
           const geoCoord = projection([d.centroidLon, d.centroidLat]);
           const mapX = geoCoord ? geoCoord[0] : 0;
           const scatterX = xScale(d.scatterX);
-          return mapX + (scatterX - mapX) * morphT;
+          const interpolatedX = mapX + (scatterX - mapX) * morphT;
+          // Clamp final position to plot bounds
+          return Math.max(0, Math.min(innerWidth, interpolatedX));
         })
         .attr('cy', d => {
           const geoCoord = projection([d.centroidLon, d.centroidLat]);
           const mapY = geoCoord ? geoCoord[1] : 0;
           const scatterY = yScale(d.scatterY);
-          return mapY + (scatterY - mapY) * morphT;
+          const interpolatedY = mapY + (scatterY - mapY) * morphT;
+          // Clamp final position to plot bounds
+          return Math.max(0, Math.min(innerHeight, interpolatedY));
         })
         .attr('r', dotRadius)
         .attr('fill', d => d.isInside ? '#E2E8F0' : colors.nonmita)

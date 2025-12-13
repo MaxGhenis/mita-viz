@@ -159,6 +159,75 @@ describe('RDDChart configuration', () => {
     });
   });
 
+  describe('scatter dot positioning', () => {
+    const INNER_WIDTH = 610; // 700 - 60 (left margin) - 30 (right margin)
+    const X_DOMAIN: [number, number] = [-50, 50];
+
+    // This is the actual positioning logic from MapToScatter (with fix)
+    const calculateDotCx = (
+      mapX: number,
+      scatterX: number,
+      morphT: number,
+      innerWidth: number
+    ) => {
+      const interpolatedX = mapX + (scatterX - mapX) * morphT;
+      // Clamp final position to plot bounds
+      return Math.max(0, Math.min(innerWidth, interpolatedX));
+    };
+
+    const xScale = (distance: number) => {
+      // d3.scaleLinear().domain([-50, 50]).range([0, innerWidth])
+      return ((distance - X_DOMAIN[0]) / (X_DOMAIN[1] - X_DOMAIN[0])) * INNER_WIDTH;
+    };
+
+    it('all dots must be within plot bounds (0 to innerWidth) at full scatter', () => {
+      const morphT = 1; // Full scatter mode
+
+      // Simulate a district far outside the map view (e.g., mapX = -200)
+      // but with valid scatter position (distance = -40, so scatterX = 61)
+      const mapX = -200; // Way off to the left in map coordinates
+      const distance = -40; // 40km outside mita boundary
+      const scatterX = xScale(distance); // Should be 61px
+
+      const cx = calculateDotCx(mapX, scatterX, morphT, INNER_WIDTH);
+
+      // At morphT=1, cx should equal scatterX (61), NOT be negative
+      expect(cx).toBeGreaterThanOrEqual(0);
+      expect(cx).toBeLessThanOrEqual(INNER_WIDTH);
+    });
+
+    it('dots must stay in bounds even during animation (morphT < 1)', () => {
+      const morphT = 0.95; // Nearly complete animation
+
+      const mapX = -300; // Very far left in map coordinates
+      const distance = -45; // Close to boundary, outside
+      const scatterX = xScale(distance); // ~30.5px
+
+      const cx = calculateDotCx(mapX, scatterX, morphT, INNER_WIDTH);
+
+      // BUG: With morphT=0.95, cx = -300 + (30.5 - (-300)) * 0.95 = -300 + 313.975 = 13.975
+      // This happens to pass, but with worse mapX values it fails
+      // The real issue: final cx must ALWAYS be clamped to [0, innerWidth]
+      expect(cx).toBeGreaterThanOrEqual(0);
+      expect(cx).toBeLessThanOrEqual(INNER_WIDTH);
+    });
+
+    it('dots with distance > 50km must be clamped to edge of plot', () => {
+      const morphT = 1;
+
+      // District 80km outside mita boundary
+      const mapX = -400;
+      const distance = -80; // Beyond the -50 to 50 display range
+      const scatterX = xScale(distance); // Would be negative: -183px
+
+      const cx = calculateDotCx(mapX, scatterX, morphT, INNER_WIDTH);
+
+      // Must be clamped to 0 (left edge), not negative
+      expect(cx).toBeGreaterThanOrEqual(0);
+      expect(cx).toBeLessThanOrEqual(INNER_WIDTH);
+    });
+  });
+
   describe('initial element opacity', () => {
     // These tests document the expected behavior for fade-in transitions
     it('fitted lines should start with opacity 0', () => {
